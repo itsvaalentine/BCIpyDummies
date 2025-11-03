@@ -1,1 +1,35 @@
- 
+# 🧠 ARCHIVOS TEMPORALES
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 🧩 ENTORNOS VIRTUALES
+.venv/
+venv/
+env/
+ENV/
+
+# 🧪 ARCHIVOS DE TEST Y COVERAGE
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+
+# 🧰 CONFIGURACIÓN LOCAL
+.idea/
+.vscode/
+*.log
+*.bak
+*.swp
+
+# 📦 BUILD Y DISTRIBUCIÓN
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# 🧱 ARCHIVOS DE SISTEMA
+.DS_Store
+Thumbs.db

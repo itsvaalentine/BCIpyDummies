@@ -3,11 +3,20 @@ name = "bcipydummies"
 version = "0.1.0"
 description = "Librería para actuar como middleware entre un EEG Emotiv (from Emotiv) para comunicarse con otros dispositivos"
 authors = [
-  { name = "Cluster Biomedico (there is no I in team)", email = "UAG.mx" }
+  { name = "Cluster Biomedico (there is no I in team)", email = "eduardogael.gz@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.9"
+
 dependencies = [
+  "websocket-client",
+  "pywin32",
+  "pynput",
+  "numpy",
+  "pandas",
+  "scipy",
+  "matplotlib",
+  "streamlit"
 ]
 
 [project.scripts]
