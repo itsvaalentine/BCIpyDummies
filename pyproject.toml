@@ -1,0 +1,18 @@
+[project]
+name = "bcipydummies"
+version = "0.1.0"
+description = "Librería para actuar como middleware entre un EEG Emotiv (from Emotiv) para comunicarse con otros dispositivos"
+authors = [
+  { name = "Cluster Biomedico (there is no I in team)", email = "UAG.mx" }
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+]
+
+[project.scripts]
+bci = "bcipydummies.cli:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
