@@ -34,7 +34,7 @@ Dependencias en pyproject.toml
 
 Estructura
 
-'''
+```
 neurobridge_x/
 │
 ├── __init__.py
@@ -55,4 +55,4 @@ neurobridge_x/
 └── cli/
     ├── __init__.py
     └── main.py                 ← interfaz CLI tipo “nbx emotiv --window Mario”
-'''
+```
