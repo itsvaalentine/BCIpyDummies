@@ -35,7 +35,7 @@ Dependencias en pyproject.toml
 Estructura
 
 ```
-neurobridge_x/
+BCIPYDUMMIES/
 │
 ├── __init__.py
 ├── cortex/
