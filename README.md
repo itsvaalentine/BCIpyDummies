@@ -31,3 +31,28 @@ Python 3.9+
 Dependencias en pyproject.toml
 
 🧾 Licencia
+
+Estructura
+
+```
+BCIPYDUMMIES/
+│
+├── __init__.py
+├── cortex/
+│   ├── __init__.py
+│   ├── websocket_client.py     ← conexión y autenticación con Emotiv Cortex API
+│   └── session_manager.py      ← manejo de token, sesión y subscripciones
+│
+├── control/
+│   ├── __init__.py
+│   ├── window_control.py       ← enviar teclas a la ventana (win32gui, win32con)
+│   ├── action_mapper.py        ← lógica de interpretación (left→A, lift→SPACE, etc.)
+│
+├── core/
+│   ├── __init__.py
+│   ├── emotiv_controller.py    ← clase principal que usa los módulos anteriores
+│
+└── cli/
+    ├── __init__.py
+    └── main.py                 ← interfaz CLI tipo “nbx emotiv --window Mario”
+```
