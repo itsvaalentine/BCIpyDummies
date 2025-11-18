@@ -6,7 +6,7 @@ import os
 import pytest
 import websockets
 
-from cortex.websocket_client import WebSocketClient
+from bcipydummies.cortex.websocket_client import WebSocketClient
 
 # ====================================================================
 #     SERVIDOR FAKE PARA TEST UNITARIO

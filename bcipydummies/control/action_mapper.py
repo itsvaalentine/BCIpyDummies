@@ -1,10 +1,16 @@
 class ActionMapper:
+    """
+    Convierte acciones mentales en teclas.
+    Solo asigna teclas, no maneja potencia.
+    """
 
-    def map(self, action, power):
-        if action == "left" and power >= 0.8:
-            return "A"
-        if action == "right":
-            return "D"
-        if action == "lift":
-            return "SPACE"
-        return None
+    MAP = {
+        "left": "A",
+        "right": "D",
+        "lift": "SPACE"
+    }
+
+    @staticmethod
+    def map(action: str):
+        """Devuelve la tecla asociada o None si la acción no existe."""
+        return ActionMapper.MAP.get(action, None)

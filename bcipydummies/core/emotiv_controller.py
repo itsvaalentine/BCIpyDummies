@@ -1,6 +1,6 @@
-from cortex.session_manager import SessionManager
-from control.window_control import WindowControl
-from control.action_mapper import ActionMapper
+from bcipydummies.cortex.session_manager import SessionManager
+from bcipydummies.control.window_control import WindowControl
+from bcipydummies.control.action_mapper import ActionMapper
 
 
 class EmotivController:
