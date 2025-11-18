@@ -21,9 +21,9 @@ def test_emotivcontroller_process_command(mock_set, mock_find):
 
     ctrl.window.press = fake_press
 
-    ctrl._process_action("left", 0.9)
-    ctrl._process_action("right", 0.5)
-    ctrl._process_action("lift", 0.7)
+    ctrl._on_com("left", 0.9)
+    ctrl._on_com("right", 0.5)
+    ctrl._on_com("lift", 0.7)
 
     assert "A" in calls
     assert "D" in calls
