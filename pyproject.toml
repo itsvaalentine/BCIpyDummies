@@ -15,8 +15,7 @@ dependencies = [
   "numpy",
   "pandas",
   "scipy",
-  "matplotlib",
-  "streamlit"
+  "matplotlib"
 ]
 
 [project.scripts]
