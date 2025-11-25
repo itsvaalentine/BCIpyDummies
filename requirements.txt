@@ -1,0 +1,7 @@
+websocket-client
+pywin32
+pynput
+numpy
+pandas
+scipy
+matplotlib
