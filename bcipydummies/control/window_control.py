@@ -342,6 +342,20 @@ class WindowControl:
 
     # -----------------------------------------------------------
 
+    def release_key(self, key):
+        """
+        Envía WM_KEYUP para soltar una tecla que antes fue mantenida
+        con hold_key(). Compatible con RAW MODE y funciona en segundo plano.
+        """
+        vk = self.VK.get(key.upper())
+        if vk is None:
+            print(f"Tecla desconocida en release_key(): {key}")
+            return
+
+        win32gui.SendMessage(self.hwnd, win32con.WM_KEYUP, vk, 0)
+
+    # -----------------------------------------------------------
+
     def type_text(self, text, spacing=0.05):
         """
         Escribe texto carácter por carácter usando press().
