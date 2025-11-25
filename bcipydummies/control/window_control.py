@@ -76,6 +76,24 @@ KEYBOARD_LAYOUTS = {
 # ============================================================
 
 class WindowControl:
+    """
+        Pequeño wrapper para controlar una ventana de Windows en "RAW MODE".
+
+        Características:
+        - Selección por nombre de ventana o directamente por HWND.
+        - Envía teclas con SendMessage (WM_KEYDOWN / WM_KEYUP), sin cambiar el foco.
+        - Soporta varios layouts de teclado (EN / ES).
+        - Incluye un interruptor global (ej. SHIFT) para pausar/reanudar el envío.
+
+        Uso típico:
+            1) Enumerar ventanas con list_windows().
+            2) Elegir ventana(s) por índice.
+            3) Crear uno o varios WindowControl (uno por HWND).
+            4) Llamar a press(), hold_key() o type_text() desde threads.
+    """
+    # ======================================================
+    # 1) INICIALIZACIÓN
+    # ======================================================
     def __init__(self, window_name, layout="EN"):
         """
         Inicializa el controlador de una ventana específica.
@@ -109,13 +127,56 @@ class WindowControl:
         # No se usa foco: RAW MODE lo hace innecesario
         time.sleep(0.1)
 
-    @staticmethod
-    def list_windows():
-        """
-        Enumera y devuelve todas las ventanas visibles del sistema.
+    # -----------------------------------------------------------
 
-        Returns:
-        - Lista de strings con los títulos de las ventanas visibles.
+    @classmethod
+    def from_hwnd(cls, hwnd, layout="EN"):
+        """
+        Crea un WindowControl a partir de un HWND ya conocido.
+
+        Úsalo cuando:
+        - Tienes varias ventanas con el MISMO título (ej. 4 emuladores iguales).
+        - Ya llamaste a list_windows(return_hwnd=True) y tienes el handle específico
+          de cada ventana.
+        
+        Ventajas:
+        - No depende del nombre de la ventana (evita el problema de FindWindow).
+        - Cada instancia queda ligada a una ventana distinta (HWND diferente).
+        - Mantiene el mismo comportamiento RAW: envía teclas aunque la ventana
+          esté en segundo plano.
+
+        Ejemplo de uso:
+
+            wins = WindowControl.list_windows(return_hwnd=True)
+            title, hwnd = wins[32]          # el usuario eligió índice 32
+            ctrl = WindowControl.from_hwnd(hwnd, layout="ES")
+            ctrl.press("F1")                # F1 SOLO va a esa ventana
+        """
+        title = win32gui.GetWindowText(hwnd)
+
+        # Crear instancia sin llamar __init__
+        obj = cls.__new__(cls)
+        obj.window_name = title
+        obj.hwnd = hwnd
+        obj.paused = False
+        obj.interrupt_key = "ENTER"
+        obj.listener = None
+
+        if layout.upper() not in KEYBOARD_LAYOUTS:
+            raise ValueError(f"Layout inválido. Usa: {list(KEYBOARD_LAYOUTS.keys())}")
+
+        obj.VK = KEYBOARD_LAYOUTS[layout.upper()]
+        return obj
+    
+    # ======================================================
+    # 2) ENUMERACIÓN DE VENTANAS
+    # ======================================================
+
+    @staticmethod
+    def list_windows(return_hwnd=False):
+        """
+        Si return_hwnd=False  → lista nombres
+        Si return_hwnd=True   → lista (nombre, hwnd)
         """
         windows = []
 
@@ -123,27 +184,18 @@ class WindowControl:
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
                 if title.strip():
-                    windows.append(title)
+                    if return_hwnd:
+                        windows.append((title, hwnd))
+                    else:
+                        windows.append(title)
 
         win32gui.EnumWindows(callback, None)
         return windows
+    
 
-    # -----------------------------------------------------------
-
-    def trigger_interrupt(self):
-        """
-        Alterna el estado de pausa global.
-        
-        Si estaba enviando comandos → se detiene.
-        Si estaba pausado → vuelve a enviar comandos.
-
-        Este comportamiento se activa automáticamente al presionar
-        la tecla asignada como interruptor (por defecto ENTER).
-        """
-        self.paused = not self.paused
-        print(f"⏸ PAUSA = {self.paused}")
-
-    # -----------------------------------------------------------
+    # ======================================================
+    # 3) INTERRUPTOR GLOBAL / PAUSA
+    # ======================================================
 
     def set_interrupt_key(self, key):
         """
@@ -165,76 +217,18 @@ class WindowControl:
 
     # -----------------------------------------------------------
 
-    def send_raw_key(self, vk):
+    def trigger_interrupt(self):
         """
-        Envía una tecla en modo RAW usando SendMessage.
+        Alterna el estado de pausa global.
+        
+        Si estaba enviando comandos → se detiene.
+        Si estaba pausado → vuelve a enviar comandos.
 
-        Este método:
-        - Funciona incluso si la ventana está en segundo plano.
-        - No cambia el foco.
-        - No requiere permisos especiales.
-
-        Parámetros:
-        - vk: Código virtual-key de la tecla.
+        Este comportamiento se activa automáticamente al presionar
+        la tecla asignada como interruptor (por defecto ENTER).
         """
-        win32gui.SendMessage(self.hwnd, win32con.WM_KEYDOWN, vk, 0)
-        time.sleep(0.05)
-        win32gui.SendMessage(self.hwnd, win32con.WM_KEYUP, vk, 0)
-
-    # -----------------------------------------------------------
-
-    def press(self, key, hold=0.1):
-        """
-        Envía una tecla SIEMPRE en modo RAW (sin usar foreground).
-
-        Flujo:
-        1. Si está pausado → no envía nada.
-        2. Si la tecla es el interruptor → activa/desactiva pausa.
-        3. Convierte la tecla a VK.
-        4. Envía con send_raw_key().
-
-        Parámetros:
-        - key: tecla a enviar (string).
-        - hold: tiempo entre KEYDOWN y KEYUP.
-        """
-        # ====== PAUSA GLOBAL ======
-        if self.paused:
-            print(f"⏸ Comando bloqueado (pausado): {key}")
-            return
-
-        # ====== INTERRRUPTOR ======
-        if key.upper() == self.interrupt_key:
-            self.trigger_interrupt()
-            return
-
-        # Obtener VK code
-        vk = self.VK.get(key.upper())
-        if vk is None:
-            print(f"⚠ Tecla desconocida: {key}")
-            return
-
-        # Enviar tecla RAW
-        self.send_raw_key(vk)
-        time.sleep(hold)
-
-    # -----------------------------------------------------------
-
-    def type_text(self, text, spacing=0.05):
-        """
-        Escribe texto carácter por carácter usando press().
-
-        Parámetros:
-        - text: string a escribir.
-        - spacing: tiempo entre cada tecla.
-
-        Notas:
-        - Todo funciona en RAW MODE.
-        - Respeta el interruptor global.
-        """
-        for char in text.upper():
-            if char in self.VK:
-                self.press(char)
-                time.sleep(spacing)
+        self.paused = not self.paused
+        print(f"⏸ PAUSA = {self.paused}")
 
     # -----------------------------------------------------------
 
@@ -272,6 +266,65 @@ class WindowControl:
         self.listener.start()
 
         print(f"🎧 Listener global activado (interruptor = {self.interrupt_key})")
+
+    # ======================================================
+    # 4) BAJO NIVEL – ENVÍO DE TECLAS RAW
+    # ======================================================
+
+    def send_raw_key(self, vk):
+        """
+        Envía una tecla en modo RAW usando SendMessage.
+
+        Este método:
+        - Funciona incluso si la ventana está en segundo plano.
+        - No cambia el foco.
+        - No requiere permisos especiales.
+
+        Parámetros:
+        - vk: Código virtual-key de la tecla.
+        """
+        win32gui.SendMessage(self.hwnd, win32con.WM_KEYDOWN, vk, 0)
+        time.sleep(0.05)
+        win32gui.SendMessage(self.hwnd, win32con.WM_KEYUP, vk, 0)
+
+    # ======================================================
+    # 5) ALTO NIVEL – ACCIONES DE TECLAS
+    # ======================================================
+
+    def press(self, key, hold=0.1):
+        """
+        Envía una tecla SIEMPRE en modo RAW (sin usar foreground).
+
+        Flujo:
+        1. Si está pausado → no envía nada.
+        2. Si la tecla es el interruptor → activa/desactiva pausa.
+        3. Convierte la tecla a VK.
+        4. Envía con send_raw_key().
+
+        Parámetros:
+        - key: tecla a enviar (string).
+        - hold: tiempo entre KEYDOWN y KEYUP.
+        """
+        # ====== PAUSA GLOBAL ======
+        if self.paused:
+            print(f"⏸ Comando bloqueado (pausado): {key}")
+            return
+
+        # ====== INTERRRUPTOR ======
+        if key.upper() == self.interrupt_key:
+            self.trigger_interrupt()
+            return
+
+        # Obtener VK code
+        vk = self.VK.get(key.upper())
+        if vk is None:
+            print(f"⚠ Tecla desconocida: {key}")
+            return
+
+        # Enviar tecla RAW
+        self.send_raw_key(vk)
+        time.sleep(hold)
+
     # -----------------------------------------------------------
 
     def hold_key(self, key):
@@ -286,3 +339,24 @@ class WindowControl:
 
         # KEYDOWN sin KEYUP
         win32gui.SendMessage(self.hwnd, win32con.WM_KEYDOWN, vk, 0)
+
+    # -----------------------------------------------------------
+
+    def type_text(self, text, spacing=0.05):
+        """
+        Escribe texto carácter por carácter usando press().
+
+        Parámetros:
+        - text: string a escribir.
+        - spacing: tiempo entre cada tecla.
+
+        Notas:
+        - Todo funciona en RAW MODE.
+        - Respeta el interruptor global.
+        """
+        for char in text.upper():
+            if char in self.VK:
+                self.press(char)
+                time.sleep(spacing)
+
+    # -----------------------------------------------------------
