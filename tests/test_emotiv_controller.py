@@ -1,17 +1,16 @@
 import pytest
-import types
+import json
 from unittest.mock import patch, MagicMock
 
 from bcipydummies.emotiv_controller import EmotivController
 
 
 # ===========================================================
-# 🧩 TESTS UNITARIOS PARA EmotivController
+# TESTS UNITARIOS PARA EmotivController
 # ===========================================================
 
 def test_list_windows_returns_list(monkeypatch):
     """Debe devolver una lista de nombres de ventanas."""
-    # Simulamos 3 ventanas visibles
     fake_windows = ["Mario", "Chrome", "Bloc de notas"]
 
     def fake_enum(callback, _):
@@ -21,9 +20,9 @@ def test_list_windows_returns_list(monkeypatch):
     def fake_get_title(hwnd):
         return fake_windows[hwnd]
 
-    monkeypatch.setattr("win32gui.EnumWindows", fake_enum)
-    monkeypatch.setattr("win32gui.GetWindowText", fake_get_title)
-    monkeypatch.setattr("win32gui.IsWindowVisible", lambda x: True)
+    monkeypatch.setattr("bcipydummies.emotiv_controller.win32gui.EnumWindows", fake_enum)
+    monkeypatch.setattr("bcipydummies.emotiv_controller.win32gui.GetWindowText", fake_get_title)
+    monkeypatch.setattr("bcipydummies.emotiv_controller.win32gui.IsWindowVisible", lambda x: True)
 
     ventanas = EmotivController.list_windows()
     assert isinstance(ventanas, list)
@@ -32,7 +31,7 @@ def test_list_windows_returns_list(monkeypatch):
 
 @patch("bcipydummies.emotiv_controller.win32gui.FindWindow", return_value=1234)
 @patch("bcipydummies.emotiv_controller.win32gui.SetForegroundWindow", return_value=None)
-def test_init_finds_window(mock_find, mock_set):
+def test_init_finds_window(mock_set, mock_find):
     """Debe inicializar correctamente si la ventana existe."""
     ctrl = EmotivController("Mario")
     assert ctrl.hwnd == 1234
@@ -61,8 +60,9 @@ def test_press_key_and_control(mock_post, mock_set, mock_find):
 
 @patch("bcipydummies.emotiv_controller.win32gui.FindWindow", return_value=123)
 @patch("bcipydummies.emotiv_controller.win32gui.SetForegroundWindow", return_value=None)
-def test_process_command(monkeypatch, mock_set, mock_find):
-    """Debe ejecutar las acciones correctas según la potencia."""
+@patch("bcipydummies.emotiv_controller.win32gui.PostMessage", return_value=None)
+def test_process_command(mock_post, mock_set, mock_find):
+    """Debe ejecutar las acciones correctas segun la potencia."""
     ctrl = EmotivController("Mario")
 
     calls = []
@@ -72,11 +72,11 @@ def test_process_command(monkeypatch, mock_set, mock_find):
 
     ctrl._control = fake_control
 
-    # Acción izquierda (debe activarse si >=0.8)
+    # Accion izquierda (debe activarse si >=0.8)
     ctrl._process_command("left", 0.85)
-    # Acción derecha (siempre)
+    # Accion derecha (siempre)
     ctrl._process_command("right", 0.4)
-    # Acción lift
+    # Accion lift
     ctrl._process_command("lift", 0.9)
 
     assert any(c[0] == "A" for c in calls)
@@ -86,48 +86,38 @@ def test_process_command(monkeypatch, mock_set, mock_find):
 
 @patch("bcipydummies.emotiv_controller.win32gui.FindWindow", return_value=123)
 @patch("bcipydummies.emotiv_controller.win32gui.SetForegroundWindow", return_value=None)
-def test_websocket_methods(mock_set, mock_find):
-    """Debe ejecutar los métodos de WebSocket sin error."""
+@patch("bcipydummies.emotiv_controller.win32gui.PostMessage", return_value=None)
+def test_websocket_methods(mock_post, mock_set, mock_find):
+    """Debe ejecutar los metodos de WebSocket sin error."""
     ctrl = EmotivController("Mario")
 
     # Creamos un objeto simulado de websocket
     ws = MagicMock()
     ws.send = MagicMock()
 
-    # Mensaje simulado de autenticación
+    # Mensaje simulado de autenticacion
     ctrl._on_open(ws)
     ws.send.assert_called_once()
 
     # Mensaje con token (id=1)
-    message_1 = json_payload({"id": 1, "result": {"cortexToken": "abc123"}})
+    message_1 = json.dumps({"id": 1, "result": {"cortexToken": "abc123"}})
     ctrl._on_message(ws, message_1)
     assert ctrl.cortex_token == "abc123"
 
     # Mensaje con headsets (id=2)
-    message_2 = json_payload({"id": 2, "result": [{"id": "HEADSET1"}]})
+    message_2 = json.dumps({"id": 2, "result": [{"id": "HEADSET1"}]})
     ctrl._on_message(ws, message_2)
     assert ctrl.headset_id == "HEADSET1"
 
-    # Mensaje con sesión (id=3)
-    message_3 = json_payload({"id": 3, "result": {"id": "SESSION1"}})
+    # Mensaje con sesion (id=3)
+    message_3 = json.dumps({"id": 3, "result": {"id": "SESSION1"}})
     ctrl._on_message(ws, message_3)
     assert ctrl.session_id == "SESSION1"
 
-    # Suscripción completada (id=4)
-    message_4 = json_payload({"id": 4, "result": {}})
+    # Suscripcion completada (id=4)
+    message_4 = json.dumps({"id": 4, "result": {}})
     ctrl._on_message(ws, message_4)
 
-    # Comando mental (stream com)
-    message_com = json_payload({"com": ["right", 0.9]})
+    # Comando mental (stream com) - this triggers _process_command which calls _control
+    message_com = json.dumps({"com": ["right", 0.9]})
     ctrl._on_message(ws, message_com)
-
-
-# ===========================================================
-# 🔧 FUNCIONES AUXILIARES
-# ===========================================================
-
-import json
-
-def json_payload(data: dict):
-    """Convierte un dict en string JSON simulado."""
-    return json.dumps(data)

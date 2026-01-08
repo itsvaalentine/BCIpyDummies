@@ -27,7 +27,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -e .
-          pip install pytest pytest-cov websocket-client pywin32
+          pip install pytest pytest-cov websocket-client pywin32 pyyaml
 
       # Ejecuta tests y genera cobertura
       - name: 🧪 Run tests with coverage
