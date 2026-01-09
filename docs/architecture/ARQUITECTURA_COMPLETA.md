@@ -1,0 +1,899 @@
+# 🧠 Arquitectura Completa de BCIpyDummies
+
+Esta guía te ayudará a entender la estructura del proyecto, cómo se comunica cada parte y qué hace cada función para que puedas utilizar y probar esta librería.
+
+## 📋 Índice
+
+1. [Visión General](#visión-general)
+2. [Estructura del Proyecto](#estructura-del-proyecto)
+3. [Componentes Principales](#componentes-principales)
+4. [Flujo de Datos](#flujo-de-datos)
+5. [Cómo se Comunican los Componentes](#cómo-se-comunican-los-componentes)
+6. [Guía de Uso y Pruebas](#guía-de-uso-y-pruebas)
+7. [Ejemplos Prácticos](#ejemplos-prácticos)
+
+---
+
+## Visión General
+
+BCIpyDummies es un **middleware** que actúa como traductor entre los dispositivos EEG Emotiv y las aplicaciones de Windows. La librería captura comandos mentales del headset Emotiv y los traduce en pulsaciones de teclado.
+
+### Arquitectura de Alto Nivel
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              BCIPipeline (Orquestador)                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌────────────────┐    ┌──────────────────┐    ┌────────────────────────┐   │
+│  │    SOURCES     │───▶│   PROCESSORS     │───▶│     PUBLISHERS         │   │
+│  │  (Entrada)     │    │  (Procesamiento) │    │     (Salida)           │   │
+│  └────────────────┘    └──────────────────┘    └────────────────────────┘   │
+│                                                                              │
+│  • EmotivSource       • ThresholdProcessor    • KeyboardPublisher           │
+│  • MockSource         • DebounceProcessor     • ConsolePublisher            │
+│                       • CommandMapper                                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Estructura del Proyecto
+
+```
+bcipydummies/
+├── __init__.py              # Punto de entrada, exporta todas las clases públicas
+├── __main__.py              # Permite ejecutar: python -m bcipydummies
+├── emotiv_controller.py     # Controlador legacy (versión antigua, simple)
+│
+├── core/                    # Núcleo del sistema
+│   ├── __init__.py
+│   ├── config.py            # Configuración (ThresholdConfig, KeyboardConfig, etc.)
+│   ├── engine.py            # BCIPipeline - Orquestador principal
+│   ├── events.py            # Tipos de eventos (MentalCommandEvent, etc.)
+│   ├── exceptions.py        # Excepciones personalizadas
+│   └── factory.py           # Funciones factory para crear componentes
+│
+├── sources/                 # Fuentes de datos EEG
+│   ├── __init__.py
+│   ├── base.py              # Protocolo/interfaz EEGSource
+│   ├── mock.py              # Fuente simulada para pruebas
+│   └── emotiv/              # Implementación para Emotiv
+│       ├── __init__.py
+│       ├── cortex_client.py # Cliente WebSocket para Cortex API
+│       └── source.py        # EmotivSource
+│
+├── processors/              # Procesadores de eventos
+│   ├── __init__.py
+│   ├── base.py              # Interfaz Processor
+│   ├── threshold.py         # Filtro por umbral de potencia
+│   ├── debounce.py          # Evita comandos repetidos rápidos
+│   └── mapper.py            # Mapea comandos a acciones
+│
+├── publishers/              # Publicadores de salida
+│   ├── __init__.py
+│   ├── base.py              # Interfaz Publisher
+│   ├── console.py           # Imprime en consola (debugging)
+│   └── keyboard/            # Simulación de teclado
+│       ├── __init__.py
+│       ├── base.py          # KeyboardPublisher base
+│       └── windows.py       # Implementación Windows
+│
+└── cli/                     # Interfaz de línea de comandos
+    ├── __init__.py
+    ├── main.py              # Punto de entrada CLI
+    └── commands/            # Comandos disponibles
+```
+
+---
+
+## Componentes Principales
+
+### 1. 🔌 Sources (Fuentes de Datos)
+
+Las **fuentes** son responsables de capturar datos EEG y convertirlos en eventos.
+
+#### `EEGSource` (Protocolo Base)
+```python
+# Ubicación: bcipydummies/sources/base.py
+
+class EEGSource(Protocol):
+    """Interfaz que todas las fuentes deben implementar."""
+    
+    @property
+    def source_id(self) -> str:
+        """Identificador único de la fuente."""
+        
+    @property
+    def is_connected(self) -> bool:
+        """True si está conectada y transmitiendo."""
+        
+    def connect(self) -> None:
+        """Establece conexión con el dispositivo EEG."""
+        
+    def disconnect(self) -> None:
+        """Desconecta del dispositivo EEG."""
+        
+    def subscribe(self, callback: EventCallback) -> None:
+        """Registra un callback para recibir eventos."""
+        
+    def unsubscribe(self, callback: EventCallback) -> None:
+        """Elimina un callback registrado."""
+```
+
+#### `EmotivSource` (Implementación Emotiv)
+```python
+# Ubicación: bcipydummies/sources/emotiv/source.py
+
+class EmotivSource(BaseEEGSource):
+    """
+    Fuente EEG para dispositivos Emotiv via Cortex API.
+    
+    Flujo de conexión:
+    1. Conecta vía WebSocket a wss://localhost:6868
+    2. Autentica con client_id y client_secret
+    3. Busca headsets disponibles
+    4. Crea sesión con el headset
+    5. Se suscribe al stream "com" (comandos mentales)
+    """
+```
+
+#### `MockSource` (Para Pruebas)
+```python
+# Ubicación: bcipydummies/sources/mock.py
+
+class MockSource(BaseEEGSource):
+    """
+    Fuente simulada para desarrollo y pruebas.
+    
+    Dos modos de operación:
+    - Aleatorio: genera comandos aleatorios periódicamente
+    - Scripted: reproduce una secuencia predefinida de eventos
+    """
+```
+
+### 2. ⚙️ Processors (Procesadores)
+
+Los **procesadores** transforman y filtran eventos en una cadena secuencial.
+
+#### `Processor` (Interfaz Base)
+```python
+# Ubicación: bcipydummies/processors/base.py
+
+class Processor(ABC):
+    """
+    Interfaz base para procesadores.
+    
+    Cada procesador recibe un evento y puede:
+    - Pasarlo sin cambios
+    - Transformarlo
+    - Filtrarlo (retorna None)
+    """
+    
+    @abstractmethod
+    def process(self, event: EEGEvent) -> Optional[EEGEvent]:
+        """Procesa un evento. Retorna None para filtrar."""
+        
+    @abstractmethod
+    def reset(self) -> None:
+        """Reinicia el estado interno del procesador."""
+```
+
+#### `ThresholdProcessor` (Filtro por Umbral)
+```python
+# Ubicación: bcipydummies/processors/threshold.py
+
+class ThresholdProcessor(Processor):
+    """
+    Filtra eventos por debajo del umbral de potencia configurado.
+    
+    Ejemplo:
+        processor = ThresholdProcessor(thresholds={"left": 0.8})
+        # Solo pasan eventos 'left' con potencia >= 80%
+    """
+```
+
+#### `DebounceProcessor` (Anti-rebote)
+```python
+# Ubicación: bcipydummies/processors/debounce.py
+
+class DebounceProcessor(Processor):
+    """
+    Evita comandos repetidos en un período de tiempo (cooldown).
+    
+    Ejemplo:
+        processor = DebounceProcessor(cooldown=0.3)
+        # Ignora el mismo comando si llega antes de 300ms
+    """
+```
+
+#### `CommandMapper` (Mapeo de Comandos)
+```python
+# Ubicación: bcipydummies/processors/mapper.py
+
+class CommandMapper(Processor):
+    """
+    Mapea comandos mentales a acciones (teclas).
+    
+    Ejemplo:
+        mapper = CommandMapper(mapping={
+            "left": "A",
+            "right": "D",
+            "lift": "SPACE"
+        })
+    """
+```
+
+### 3. 📤 Publishers (Publicadores)
+
+Los **publicadores** reciben eventos procesados y ejecutan acciones.
+
+#### `Publisher` (Interfaz Base)
+```python
+# Ubicación: bcipydummies/publishers/base.py
+
+class Publisher(ABC):
+    """
+    Interfaz base para publicadores.
+    
+    Ciclo de vida:
+    1. start() - Inicializa recursos
+    2. publish(event) - Procesa eventos
+    3. stop() - Libera recursos
+    """
+    
+    @abstractmethod
+    def publish(self, event: EEGEvent) -> None:
+        """Publica un evento EEG."""
+        
+    @abstractmethod
+    def start(self) -> None:
+        """Inicializa el publicador."""
+        
+    @abstractmethod
+    def stop(self) -> None:
+        """Detiene el publicador."""
+        
+    @property
+    @abstractmethod
+    def is_ready(self) -> bool:
+        """True si está listo para recibir eventos."""
+```
+
+#### `ConsolePublisher` (Salida a Consola)
+```python
+# Ubicación: bcipydummies/publishers/console.py
+
+class ConsolePublisher(Publisher):
+    """
+    Imprime eventos en la consola.
+    Útil para debugging y desarrollo.
+    """
+```
+
+#### `WindowsKeyboardPublisher` (Teclado Windows)
+```python
+# Ubicación: bcipydummies/publishers/keyboard/windows.py
+
+class WindowsKeyboardPublisher:
+    """
+    Simula pulsaciones de teclado en Windows.
+    
+    Usa la API win32 para enviar eventos de teclado
+    a una ventana específica.
+    """
+```
+
+### 4. 🎛️ BCIPipeline (Orquestador)
+
+```python
+# Ubicación: bcipydummies/core/engine.py
+
+class BCIPipeline:
+    """
+    Orquestador central que conecta Source -> Processors -> Publishers.
+    
+    Características:
+    - Thread-safe mediante locks
+    - Maneja ciclo de vida de componentes
+    - Estadísticas de eventos procesados
+    - Soporta context manager (with)
+    """
+```
+
+### 5. 📊 Events (Eventos)
+
+```python
+# Ubicación: bcipydummies/core/events.py
+
+class MentalCommand(Enum):
+    """
+    Comandos mentales soportados:
+    NEUTRAL, PUSH, PULL, LIFT, DROP,
+    LEFT, RIGHT, ROTATE_LEFT, ROTATE_RIGHT, DISAPPEAR
+    """
+
+@dataclass(frozen=True)
+class MentalCommandEvent(EEGEvent):
+    """
+    Evento de comando mental.
+    
+    Atributos:
+    - timestamp: Momento del evento
+    - source_id: ID de la fuente
+    - command: Tipo de comando (MentalCommand)
+    - power: Potencia/confianza (0.0 - 1.0)
+    - action: Acción mapeada (opcional)
+    """
+```
+
+---
+
+## Flujo de Datos
+
+### Diagrama de Flujo Completo
+
+```
+┌──────────────────┐
+│  Headset Emotiv  │ (Hardware EEG)
+└────────┬─────────┘
+         │ Bluetooth/USB
+         ▼
+┌──────────────────┐
+│ Emotiv Cortex App│ (Software Emotiv)
+└────────┬─────────┘
+         │ WebSocket (wss://localhost:6868)
+         ▼
+┌──────────────────────────────────────────────────────────────┐
+│                        BCIPipeline                            │
+│  ┌─────────────┐                                              │
+│  │EmotivSource │                                              │
+│  │             │                                              │
+│  │ CortexClient├──┐  ┌─────────────────────────────────────┐ │
+│  └─────────────┘  │  │         PROCESSOR CHAIN             │ │
+│                   │  │                                     │ │
+│                   ▼  │  ┌──────────┐  ┌──────────┐        │ │
+│  MentalCommandEvent │  │Threshold │──▶│Debounce │──┐     │ │
+│      {                │  │Processor │  │Processor │  │     │ │
+│        command: LEFT, │  └──────────┘  └──────────┘  │     │ │
+│        power: 0.85    │                              │     │ │
+│      }                │  ┌──────────┐                │     │ │
+│                   ────┼─▶│Command   │◀───────────────┘     │ │
+│                       │  │Mapper    │                      │ │
+│                       │  └────┬─────┘                      │ │
+│                       └───────┼────────────────────────────┘ │
+│                               │                              │
+│                               ▼                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │                    PUBLISHERS (Fan-out)                  ││
+│  │  ┌─────────────────┐    ┌─────────────────────────────┐ ││
+│  │  │ConsolePublisher │    │WindowsKeyboardPublisher    │ ││
+│  │  │                 │    │                             │ ││
+│  │  │ print(event)    │    │ PostMessage(WM_KEYDOWN)    │ ││
+│  │  └─────────────────┘    └─────────────────────────────┘ ││
+│  └─────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────┐
+                    │ Aplicación Target│ (Juego, Notepad, etc.)
+                    └──────────────────┘
+```
+
+### Flujo de Autenticación Emotiv
+
+```
+┌──────────────┐                    ┌──────────────┐
+│   Cliente    │                    │ Cortex API   │
+└──────┬───────┘                    └──────┬───────┘
+       │                                   │
+       │──── 1. authorize() ──────────────▶│
+       │      {clientId, clientSecret}     │
+       │◀─── cortexToken ─────────────────│
+       │                                   │
+       │──── 2. queryHeadsets() ─────────▶│
+       │◀─── lista de headsets ───────────│
+       │                                   │
+       │──── 3. createSession() ─────────▶│
+       │      {headsetId}                  │
+       │◀─── sessionId ───────────────────│
+       │                                   │
+       │──── 4. subscribe() ─────────────▶│
+       │      {streams: ["com"]}           │
+       │◀─── datos de streaming ──────────│
+       │                                   │
+```
+
+---
+
+## Cómo se Comunican los Componentes
+
+### 1. Patrón Observer (Source → Pipeline)
+
+La fuente emite eventos a través de callbacks registrados:
+
+```python
+# El Pipeline se suscribe a la fuente
+source.subscribe(callback=self._on_event)
+
+# Cuando llega un evento, la fuente lo emite
+def _emit(self, event: EEGEvent) -> None:
+    for callback in self._subscribers:
+        callback(event)
+```
+
+### 2. Patrón Chain of Responsibility (Processors)
+
+Los procesadores se ejecutan en secuencia:
+
+```python
+# En BCIPipeline._on_event():
+current_event = event
+for processor in self._processors:
+    if current_event is None:
+        break  # Evento filtrado
+    current_event = processor.process(current_event)
+```
+
+### 3. Patrón Fan-out (Pipeline → Publishers)
+
+El evento procesado se envía a todos los publishers:
+
+```python
+# En BCIPipeline._on_event():
+for publisher in self._publishers:
+    if publisher.is_ready:
+        publisher.publish(current_event)
+```
+
+---
+
+## Guía de Uso y Pruebas
+
+### Instalación
+
+```bash
+# Clonar el repositorio
+git clone https://github.com/itsvaalentine/BCIpyDummies.git
+cd BCIpyDummies
+
+# Instalar en modo desarrollo
+pip install -e .
+
+# Instalar dependencias de desarrollo (para tests)
+pip install -e ".[dev]"
+```
+
+### Configuración de Credenciales
+
+```bash
+# Variables de entorno (recomendado)
+export EMOTIV_CLIENT_ID="tu_client_id"
+export EMOTIV_CLIENT_SECRET="tu_client_secret"
+```
+
+### Ejecutar Tests
+
+```bash
+# Ejecutar todos los tests
+pytest tests/ -v
+
+# Ejecutar tests específicos
+pytest tests/test_core.py -v
+pytest tests/test_processors.py -v
+pytest tests/test_sources.py -v
+pytest tests/test_publishers.py -v
+```
+
+---
+
+## Ejemplos Prácticos
+
+### Ejemplo 1: Uso Básico con MockSource (Sin Hardware)
+
+```python
+"""
+Este ejemplo funciona sin hardware Emotiv.
+Perfecto para probar la librería.
+"""
+import time
+from bcipydummies import BCIPipeline, MockSource, ConsolePublisher
+from bcipydummies.core.events import MentalCommand
+
+# Crear fuente simulada que genera eventos aleatorios
+source = MockSource(
+    source_id="test-source",
+    random_interval=1.0,  # Un evento cada segundo
+    random_commands=[
+        MentalCommand.LEFT,
+        MentalCommand.RIGHT,
+        MentalCommand.PUSH,
+        MentalCommand.NEUTRAL,
+    ]
+)
+
+# Crear publicador de consola
+console = ConsolePublisher(prefix="[BCI]")
+
+# Crear y ejecutar el pipeline
+pipeline = BCIPipeline(
+    source=source,
+    publishers=[console]
+)
+
+# Usar como context manager
+with pipeline:
+    print("Pipeline iniciado. Presiona Ctrl+C para detener.")
+    try:
+        time.sleep(10)  # Ejecutar por 10 segundos
+    except KeyboardInterrupt:
+        pass
+
+print("Pipeline detenido.")
+print(f"Estadísticas: {pipeline.statistics}")
+```
+
+### Ejemplo 2: Pipeline Completo con Procesadores
+
+```python
+"""
+Ejemplo con cadena de procesadores.
+"""
+from bcipydummies import (
+    BCIPipeline,
+    MockSource,
+    ConsolePublisher,
+    ThresholdProcessor,
+    DebounceProcessor,
+    CommandMapper
+)
+
+# Fuente simulada
+source = MockSource()
+
+# Cadena de procesadores
+processors = [
+    # 1. Filtrar por umbral de potencia
+    ThresholdProcessor(
+        thresholds={
+            "left": 0.7,   # Solo left con 70%+ potencia
+            "right": 0.6,  # Solo right con 60%+ potencia
+        },
+        default_threshold=0.5
+    ),
+    
+    # 2. Evitar comandos repetidos
+    DebounceProcessor(cooldown=0.3),  # 300ms entre comandos
+    
+    # 3. Mapear comandos a teclas
+    CommandMapper(
+        mapping={
+            "left": "A",
+            "right": "D",
+            "push": "W",
+            "lift": "SPACE"
+        }
+    )
+]
+
+# Publicadores
+publishers = [ConsolePublisher(prefix="[EVENTO]")]
+
+# Crear pipeline
+pipeline = BCIPipeline(
+    source=source,
+    processors=processors,
+    publishers=publishers
+)
+
+# Ejecutar
+with pipeline:
+    import time
+    time.sleep(30)
+```
+
+### Ejemplo 3: Secuencia de Eventos Scripted
+
+```python
+"""
+Ejemplo con secuencia predefinida de eventos.
+Útil para pruebas reproducibles.
+"""
+from bcipydummies.sources.mock import MockSource, ScriptedEvent, create_test_script
+from bcipydummies.core.events import MentalCommand
+from bcipydummies import BCIPipeline, ConsolePublisher
+
+# Crear script de eventos
+script = create_test_script(
+    commands=["neutral", "left", "left", "right", "push", "neutral"],
+    interval=0.5,  # 500ms entre eventos
+    power=0.85
+)
+
+# Fuente con script
+source = MockSource(script=script, loop_script=False)
+
+# Pipeline
+pipeline = BCIPipeline(
+    source=source,
+    publishers=[ConsolePublisher()]
+)
+
+with pipeline:
+    import time
+    time.sleep(5)  # Esperar que termine el script
+```
+
+### Ejemplo 4: Crear un Publicador Personalizado
+
+```python
+"""
+Ejemplo de cómo crear tu propio publicador.
+"""
+from bcipydummies.publishers.base import Publisher
+from bcipydummies.core.events import EEGEvent, MentalCommandEvent
+
+class MiPublicador(Publisher):
+    """Publicador personalizado que cuenta eventos por comando."""
+    
+    def __init__(self):
+        self._is_ready = False
+        self.contadores = {}
+    
+    def start(self) -> None:
+        self._is_ready = True
+        self.contadores = {}
+        print("MiPublicador iniciado!")
+    
+    def stop(self) -> None:
+        self._is_ready = False
+        print(f"MiPublicador detenido. Contadores: {self.contadores}")
+    
+    @property
+    def is_ready(self) -> bool:
+        return self._is_ready
+    
+    def publish(self, event: EEGEvent) -> None:
+        if isinstance(event, MentalCommandEvent):
+            cmd = event.command.name
+            self.contadores[cmd] = self.contadores.get(cmd, 0) + 1
+            print(f"Comando {cmd} detectado ({self.contadores[cmd]} veces)")
+
+
+# Usar el publicador personalizado
+from bcipydummies import BCIPipeline, MockSource
+
+source = MockSource()
+mi_pub = MiPublicador()
+
+with BCIPipeline(source=source, publishers=[mi_pub]):
+    import time
+    time.sleep(10)
+```
+
+### Ejemplo 5: Crear un Procesador Personalizado
+
+```python
+"""
+Ejemplo de procesador personalizado que filtra comandos NEUTRAL.
+"""
+from bcipydummies.processors.base import Processor
+from bcipydummies.core.events import EEGEvent, MentalCommandEvent, MentalCommand
+from typing import Optional
+
+class FiltrarNeutral(Processor):
+    """Filtra todos los eventos NEUTRAL."""
+    
+    def process(self, event: EEGEvent) -> Optional[EEGEvent]:
+        if isinstance(event, MentalCommandEvent):
+            if event.command == MentalCommand.NEUTRAL:
+                return None  # Filtrar
+        return event  # Pasar el resto
+    
+    def reset(self) -> None:
+        pass  # No tiene estado
+
+
+# Usar el procesador
+from bcipydummies import BCIPipeline, MockSource, ConsolePublisher
+
+pipeline = BCIPipeline(
+    source=MockSource(),
+    processors=[FiltrarNeutral()],
+    publishers=[ConsolePublisher()]
+)
+
+with pipeline:
+    import time
+    time.sleep(10)
+```
+
+### Ejemplo 6: Uso con Factory (Configuración Simplificada)
+
+```python
+"""
+Uso de funciones factory para crear pipelines desde configuración.
+"""
+from bcipydummies import create_pipeline, Config, ThresholdConfig, KeyboardConfig, EmotivConfig
+
+# Crear configuración
+config = Config(
+    emotiv=EmotivConfig(
+        client_id="tu_client_id",
+        client_secret="tu_client_secret"
+    ),
+    thresholds=ThresholdConfig(
+        default=0.5,
+        left=0.8,
+        right=0.6
+    ),
+    keyboard=KeyboardConfig(
+        left="a",
+        right="d",
+        lift="space"
+    ),
+    target_window="Notepad"
+)
+
+# Crear pipeline con factory
+# Usa "simulated" en lugar de "emotiv" para pruebas sin hardware
+pipeline = create_pipeline(config, source_type="simulated")
+
+with pipeline:
+    input("Presiona Enter para detener...")
+```
+
+### Ejemplo 7: Control de Ventana Real (Windows)
+
+```python
+"""
+Ejemplo real controlando una ventana de Windows.
+NOTA: Requiere Windows y la aplicación target abierta.
+"""
+from bcipydummies import BCIPipeline, MockSource, ThresholdProcessor, CommandMapper
+from bcipydummies.publishers.keyboard.windows import WindowsKeyboardPublisher
+from bcipydummies.core.events import MentalCommand
+
+# Listar ventanas disponibles
+print("Ventanas disponibles:")
+for window in WindowsKeyboardPublisher.list_windows()[:20]:
+    print(f"  - {window}")
+
+# Configurar
+target_window = "Notepad"  # Cambia esto por tu ventana
+
+# Fuente simulada para pruebas
+source = MockSource()
+
+# Procesadores
+processors = [
+    ThresholdProcessor(thresholds={"left": 0.7, "right": 0.7}),
+    CommandMapper(mapping={
+        "left": "A",
+        "right": "D", 
+        "push": "W",
+        "lift": "SPACE"
+    })
+]
+
+# Publisher de teclado
+keyboard = WindowsKeyboardPublisher(
+    window_name=target_window,
+    command_mapping={
+        MentalCommand.LEFT: "A",
+        MentalCommand.RIGHT: "D",
+        MentalCommand.PUSH: "W",
+        MentalCommand.LIFT: "SPACE"
+    }
+)
+
+# Pipeline
+pipeline = BCIPipeline(
+    source=source,
+    processors=processors,
+    publishers=[keyboard]
+)
+
+try:
+    with pipeline:
+        print(f"Controlando '{target_window}'...")
+        print("Presiona Ctrl+C para detener.")
+        import time
+        while True:
+            time.sleep(1)
+except KeyboardInterrupt:
+    print("\nDetenido.")
+```
+
+### Ejemplo 8: Uso del CLI
+
+```bash
+# Ver ayuda
+python -m bcipydummies --help
+
+# Listar ventanas disponibles
+python -m bcipydummies list-windows
+
+# Ejecutar con fuente mock
+python -m bcipydummies run --source mock --verbose
+
+# Ejecutar con ventana específica
+python -m bcipydummies run --source mock --window "Notepad" --verbose
+```
+
+---
+
+## Resumen de Funciones Principales
+
+### BCIPipeline
+
+| Método | Descripción |
+|--------|-------------|
+| `start()` | Inicia el pipeline: conecta source, inicia publishers |
+| `stop()` | Detiene el pipeline: desconecta source, detiene publishers |
+| `add_processor(p)` | Añade un procesador a la cadena |
+| `add_publisher(p)` | Añade un publicador |
+| `remove_processor(p)` | Elimina un procesador |
+| `remove_publisher(p)` | Elimina un publicador |
+| `statistics` | Retorna diccionario con eventos recibidos/procesados/descartados |
+
+### EEGSource
+
+| Método | Descripción |
+|--------|-------------|
+| `connect()` | Conecta con el dispositivo EEG |
+| `disconnect()` | Desconecta del dispositivo |
+| `subscribe(callback)` | Registra función para recibir eventos |
+| `unsubscribe(callback)` | Elimina función registrada |
+| `is_connected` | True si está conectado |
+| `source_id` | Identificador único de la fuente |
+
+### Processor
+
+| Método | Descripción |
+|--------|-------------|
+| `process(event)` | Procesa evento; retorna evento o None para filtrar |
+| `reset()` | Reinicia estado interno |
+
+### Publisher
+
+| Método | Descripción |
+|--------|-------------|
+| `start()` | Inicializa recursos |
+| `stop()` | Libera recursos |
+| `publish(event)` | Publica un evento |
+| `is_ready` | True si está listo |
+
+---
+
+## Troubleshooting
+
+### Errores Comunes
+
+**"Window not found"**
+- El nombre de la ventana debe coincidir exactamente
+- Usa `WindowsKeyboardPublisher.list_windows()` para ver nombres exactos
+
+**"No headsets found"**
+- Asegúrate de que Emotiv Cortex esté ejecutándose
+- Verifica que el headset esté conectado en Cortex
+
+**"Authentication failed"**
+- Verifica tus credenciales (client_id, client_secret)
+- Obtén credenciales en: https://www.emotiv.com/developer/
+
+**Eventos no llegan al publisher**
+- Revisa los umbrales (thresholds) - pueden estar filtrando todo
+- Usa `ConsolePublisher` para debugging
+
+---
+
+## Contacto y Soporte
+
+- **Issues**: https://github.com/itsvaalentine/BCIpyDummies/issues
+- **Documentación**: https://github.com/itsvaalentine/BCIpyDummies/docs
+
+---
+
+*Documentación generada para BCIpyDummies v0.2.0*
