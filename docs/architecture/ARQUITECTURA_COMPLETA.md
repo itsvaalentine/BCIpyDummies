@@ -806,7 +806,207 @@ except KeyboardInterrupt:
     print("\nDetenido.")
 ```
 
-### Ejemplo 8: Uso del CLI
+### Ejemplo 8: Uso con Hardware Real Emotiv (Mostrar Datos)
+
+```python
+"""
+Ejemplo de uso con hardware REAL Emotiv.
+Muestra los comandos mentales recibidos del dispositivo en tiempo real.
+
+REQUISITOS:
+- Emotiv Cortex app ejecutándose
+- Headset Emotiv conectado y configurado
+- Comandos mentales entrenados en EmotivBCI
+- Credenciales de desarrollador (client_id, client_secret)
+"""
+import os
+import time
+from datetime import datetime
+
+from bcipydummies import BCIPipeline, ConsolePublisher
+from bcipydummies.sources.emotiv import EmotivSource
+from bcipydummies.sources.emotiv.cortex_client import CortexCredentials
+from bcipydummies.core.events import MentalCommandEvent, ConnectionEvent, EEGEvent
+from bcipydummies.publishers.base import Publisher
+
+
+class MonitorPublisher(Publisher):
+    """
+    Publisher personalizado para mostrar información detallada
+    de los comandos recibidos del hardware Emotiv.
+    """
+    
+    def __init__(self):
+        self._is_ready = False
+        self.total_eventos = 0
+        self.comandos_por_tipo = {}
+        self.ultimo_comando = None
+        self.hora_inicio = None
+    
+    def start(self) -> None:
+        self._is_ready = True
+        self.hora_inicio = datetime.now()
+        print("=" * 60)
+        print("🧠 MONITOR DE COMANDOS EMOTIV - INICIADO")
+        print("=" * 60)
+        print(f"⏰ Inicio: {self.hora_inicio.strftime('%H:%M:%S')}")
+        print("-" * 60)
+    
+    def stop(self) -> None:
+        self._is_ready = False
+        duracion = datetime.now() - self.hora_inicio if self.hora_inicio else None
+        print("\n" + "=" * 60)
+        print("📊 RESUMEN DE SESIÓN")
+        print("=" * 60)
+        print(f"⏱️  Duración: {duracion}")
+        print(f"📈 Total eventos: {self.total_eventos}")
+        print("\n📋 Comandos por tipo:")
+        for cmd, count in sorted(self.comandos_por_tipo.items()):
+            porcentaje = (count / self.total_eventos * 100) if self.total_eventos > 0 else 0
+            print(f"   • {cmd}: {count} ({porcentaje:.1f}%)")
+        print("=" * 60)
+    
+    @property
+    def is_ready(self) -> bool:
+        return self._is_ready
+    
+    def publish(self, event: EEGEvent) -> None:
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        
+        if isinstance(event, ConnectionEvent):
+            estado = "✅ CONECTADO" if event.connected else "❌ DESCONECTADO"
+            print(f"[{timestamp}] {estado}: {event.message or ''}")
+            
+        elif isinstance(event, MentalCommandEvent):
+            self.total_eventos += 1
+            cmd_name = event.command.name
+            self.comandos_por_tipo[cmd_name] = self.comandos_por_tipo.get(cmd_name, 0) + 1
+            
+            # Barra de potencia visual
+            potencia_porcentaje = event.power * 100
+            barras = int(potencia_porcentaje / 5)  # 20 barras máximo
+            barra_visual = "█" * barras + "░" * (20 - barras)
+            
+            # Emoji según el comando
+            emojis = {
+                "NEUTRAL": "😐",
+                "PUSH": "👊",
+                "PULL": "🤚",
+                "LIFT": "⬆️",
+                "DROP": "⬇️",
+                "LEFT": "⬅️",
+                "RIGHT": "➡️",
+                "ROTATE_LEFT": "↪️",
+                "ROTATE_RIGHT": "↩️",
+                "DISAPPEAR": "👻"
+            }
+            emoji = emojis.get(cmd_name, "🧠")
+            
+            print(f"[{timestamp}] {emoji} {cmd_name:12} [{barra_visual}] {potencia_porcentaje:5.1f}%")
+            
+            # Guardar último comando no-neutral
+            if cmd_name != "NEUTRAL":
+                self.ultimo_comando = (cmd_name, event.power)
+
+
+def main():
+    """
+    Función principal para conectar con hardware Emotiv real.
+    """
+    print("\n🔧 Configurando conexión con Emotiv...")
+    
+    # Obtener credenciales de variables de entorno
+    client_id = os.environ.get("EMOTIV_CLIENT_ID")
+    client_secret = os.environ.get("EMOTIV_CLIENT_SECRET")
+    
+    if not client_id or not client_secret:
+        print("❌ ERROR: Configura las variables de entorno:")
+        print("   export EMOTIV_CLIENT_ID='tu_client_id'")
+        print("   export EMOTIV_CLIENT_SECRET='tu_client_secret'")
+        return
+    
+    # Crear credenciales
+    credentials = CortexCredentials(
+        client_id=client_id,
+        client_secret=client_secret
+    )
+    
+    # Crear fuente Emotiv (hardware real)
+    source = EmotivSource(credentials=credentials)
+    
+    # Crear monitor para visualizar datos
+    monitor = MonitorPublisher()
+    
+    # También añadir ConsolePublisher para ver eventos raw
+    console = ConsolePublisher(prefix="[RAW]")
+    
+    # Crear pipeline
+    pipeline = BCIPipeline(
+        source=source,
+        publishers=[monitor]  # Solo monitor para vista limpia
+        # publishers=[monitor, console]  # Descomentar para ver también raw
+    )
+    
+    print("\n🎧 Conectando con headset Emotiv...")
+    print("   (Asegúrate de que Emotiv Cortex esté ejecutándose)")
+    print("\n⌨️  Presiona Ctrl+C para detener\n")
+    
+    try:
+        with pipeline:
+            # Mantener ejecutando hasta Ctrl+C
+            while True:
+                time.sleep(0.1)
+                
+    except KeyboardInterrupt:
+        print("\n\n🛑 Deteniendo...")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Salida esperada del ejemplo:**
+
+```
+🔧 Configurando conexión con Emotiv...
+
+🎧 Conectando con headset Emotiv...
+   (Asegúrate de que Emotiv Cortex esté ejecutándose)
+
+⌨️  Presiona Ctrl+C para detener
+
+============================================================
+🧠 MONITOR DE COMANDOS EMOTIV - INICIADO
+============================================================
+⏰ Inicio: 14:30:45
+------------------------------------------------------------
+[14:30:46.123] ✅ CONECTADO: Connected to EPOC-X12345
+[14:30:46.234] 😐 NEUTRAL      [████████████████░░░░] 82.5%
+[14:30:46.456] 😐 NEUTRAL      [███████████████░░░░░] 78.3%
+[14:30:46.678] ⬅️ LEFT         [████████████████████] 95.2%
+[14:30:46.890] ⬅️ LEFT         [██████████████████░░] 88.1%
+[14:30:47.123] 😐 NEUTRAL      [████████████░░░░░░░░] 62.0%
+[14:30:47.345] ➡️ RIGHT        [████████████████░░░░] 79.5%
+[14:30:47.567] 👊 PUSH         [███████████████████░] 91.3%
+...
+
+🛑 Deteniendo...
+
+============================================================
+📊 RESUMEN DE SESIÓN
+============================================================
+⏱️  Duración: 0:02:15.234567
+📈 Total eventos: 847
+
+📋 Comandos por tipo:
+   • LEFT: 45 (5.3%)
+   • NEUTRAL: 756 (89.3%)
+   • PUSH: 12 (1.4%)
+   • RIGHT: 34 (4.0%)
+============================================================
+```
+
+### Ejemplo 9: Uso del CLI
 
 ```bash
 # Ver ayuda
