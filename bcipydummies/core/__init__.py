@@ -11,6 +11,8 @@ Example usage:
     >>> from bcipydummies.core import (
     ...     MentalCommand,
     ...     MentalCommandEvent,
+    ...     FacialExpression,
+    ...     FacialExpressionEvent,
     ...     BCIPipeline,
     ...     Config,
     ...     create_pipeline,
@@ -27,9 +29,16 @@ Example usage:
 
 from .events import (
     ConnectionEvent,
+    DeviceInfoEvent,
     EEGEvent,
+    EmotivStream,
+    FacialExpression,
+    FacialExpressionEvent,
     MentalCommand,
     MentalCommandEvent,
+    PerformanceMetricsEvent,
+    PowerBandEvent,
+    SystemEvent,
 )
 from .exceptions import (
     AuthenticationError,
@@ -66,9 +75,16 @@ from .factory import (
 __all__ = [
     # Events
     "ConnectionEvent",
+    "DeviceInfoEvent",
     "EEGEvent",
+    "EmotivStream",
+    "FacialExpression",
+    "FacialExpressionEvent",
     "MentalCommand",
     "MentalCommandEvent",
+    "PerformanceMetricsEvent",
+    "PowerBandEvent",
+    "SystemEvent",
     # Pipeline Engine
     "BCIPipeline",
     # Configuration

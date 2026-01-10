@@ -130,12 +130,27 @@ class EmotivSource(BaseEEGSource):
     """
     Fuente EEG para dispositivos Emotiv via Cortex API.
     
+    Streams disponibles (sin licencia):
+    - "com": Comandos mentales (push, pull, left, right, lift, etc.)
+    - "fac": Expresiones faciales (blink, smile, frown, wink, etc.)
+    - "met": Métricas de rendimiento (atención, estrés, relajación)
+    - "pow": Bandas de potencia (theta, alpha, beta, gamma)
+    - "dev": Info del dispositivo (batería, calidad de señal)
+    - "sys": Eventos del sistema
+    
     Flujo de conexión:
     1. Conecta vía WebSocket a wss://localhost:6868
-    2. Autentica con client_id y client_secret
-    3. Busca headsets disponibles
-    4. Crea sesión con el headset
-    5. Se suscribe al stream "com" (comandos mentales)
+    2. Solicita acceso (muestra popup en Cortex si no está aprobado)
+    3. Autentica con client_id y client_secret
+    4. Busca headsets disponibles
+    5. Crea sesión con el headset
+    6. Se suscribe a los streams configurados
+    
+    Ejemplo con múltiples streams:
+        source = EmotivSource(
+            credentials=credentials,
+            streams=["com", "fac", "met"]  # Comandos, facial, métricas
+        )
     """
 ```
 
@@ -314,6 +329,21 @@ class MentalCommand(Enum):
     LEFT, RIGHT, ROTATE_LEFT, ROTATE_RIGHT, DISAPPEAR
     """
 
+class FacialExpression(Enum):
+    """
+    Expresiones faciales soportadas:
+    NEUTRAL, BLINK, WINK_LEFT, WINK_RIGHT, SURPRISE, FROWN,
+    SMILE, CLENCH, LAUGH, SMIRK_LEFT, SMIRK_RIGHT,
+    LOOK_LEFT, LOOK_RIGHT, LOOK_UP, LOOK_DOWN
+    """
+
+class EmotivStream(Enum):
+    """
+    Streams de datos disponibles:
+    COM (comandos), FAC (facial), MET (métricas), 
+    POW (potencia), DEV (dispositivo), SYS (sistema)
+    """
+
 @dataclass(frozen=True)
 class MentalCommandEvent(EEGEvent):
     """
@@ -325,6 +355,44 @@ class MentalCommandEvent(EEGEvent):
     - command: Tipo de comando (MentalCommand)
     - power: Potencia/confianza (0.0 - 1.0)
     - action: Acción mapeada (opcional)
+    """
+
+@dataclass(frozen=True)
+class FacialExpressionEvent(EEGEvent):
+    """
+    Evento de expresión facial.
+    
+    Atributos:
+    - timestamp: Momento del evento
+    - source_id: ID de la fuente
+    - expression: Tipo de expresión (FacialExpression)
+    - power: Potencia/confianza (0.0 - 1.0)
+    """
+
+@dataclass(frozen=True)
+class PerformanceMetricsEvent(EEGEvent):
+    """
+    Evento de métricas de rendimiento.
+    
+    Atributos:
+    - focus: Nivel de foco/atención (0.0 - 1.0)
+    - engagement: Nivel de compromiso (0.0 - 1.0)
+    - excitement: Nivel de excitación (0.0 - 1.0)
+    - long_excitement: Excitación a largo plazo (0.0 - 1.0)
+    - stress: Nivel de estrés (0.0 - 1.0)
+    - relaxation: Nivel de relajación (0.0 - 1.0)
+    - interest: Nivel de interés (0.0 - 1.0)
+    """
+
+@dataclass(frozen=True)
+class DeviceInfoEvent(EEGEvent):
+    """
+    Evento de información del dispositivo.
+    
+    Atributos:
+    - battery_level: Nivel de batería (0-100%)
+    - signal_quality: Calidad de señal (0.0 - 1.0)
+    - contact_quality: Calidad por canal (dict)
     """
 ```
 
@@ -1006,7 +1074,295 @@ if __name__ == "__main__":
 ============================================================
 ```
 
-### Ejemplo 9: Uso del CLI
+### Ejemplo 9: Captura Completa - Todos los Streams de Emotiv
+
+```python
+"""
+Ejemplo COMPLETO para capturar TODOS los datos disponibles de Emotiv
+sin necesidad de licencia:
+
+- Comandos mentales (com)
+- Expresiones faciales (fac)
+- Métricas de rendimiento (met)
+- Bandas de potencia (pow)
+- Info del dispositivo (dev)
+
+Este ejemplo permite al usuario elegir qué streams capturar.
+"""
+import os
+import time
+from datetime import datetime
+from typing import Dict, List
+
+from bcipydummies import BCIPipeline, ConsolePublisher
+from bcipydummies.sources.emotiv import EmotivSource
+from bcipydummies.sources.emotiv.cortex_client import CortexCredentials
+from bcipydummies.core.events import (
+    MentalCommandEvent,
+    FacialExpressionEvent,
+    PerformanceMetricsEvent,
+    PowerBandEvent,
+    DeviceInfoEvent,
+    ConnectionEvent,
+    EEGEvent,
+)
+from bcipydummies.publishers.base import Publisher
+
+
+class MultiStreamMonitor(Publisher):
+    """
+    Monitor que captura y muestra todos los tipos de eventos de Emotiv.
+    """
+    
+    def __init__(self, show_power_bands: bool = False):
+        self._is_ready = False
+        self.show_power_bands = show_power_bands
+        
+        # Contadores por tipo de evento
+        self.stats = {
+            "mental_commands": 0,
+            "facial_expressions": 0,
+            "performance_metrics": 0,
+            "power_bands": 0,
+            "device_info": 0,
+        }
+        
+        # Último valor de cada métrica
+        self.last_metrics: Dict[str, float] = {}
+        self.last_battery: int = 0
+    
+    def start(self) -> None:
+        self._is_ready = True
+        print("=" * 70)
+        print("🧠 MONITOR MULTI-STREAM DE EMOTIV - INICIADO")
+        print("=" * 70)
+        print(f"⏰ Inicio: {datetime.now().strftime('%H:%M:%S')}")
+        print("-" * 70)
+        print("📡 Streams activos: COM (mental), FAC (facial), MET (métricas)")
+        print("-" * 70)
+    
+    def stop(self) -> None:
+        self._is_ready = False
+        print("\n" + "=" * 70)
+        print("📊 RESUMEN DE SESIÓN")
+        print("=" * 70)
+        print(f"🧠 Comandos mentales capturados: {self.stats['mental_commands']}")
+        print(f"😀 Expresiones faciales capturadas: {self.stats['facial_expressions']}")
+        print(f"📈 Actualizaciones de métricas: {self.stats['performance_metrics']}")
+        print(f"🔋 Último nivel de batería: {self.last_battery}%")
+        print("=" * 70)
+    
+    @property
+    def is_ready(self) -> bool:
+        return self._is_ready
+    
+    def publish(self, event: EEGEvent) -> None:
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        
+        if isinstance(event, ConnectionEvent):
+            estado = "✅ CONECTADO" if event.connected else "❌ DESCONECTADO"
+            print(f"\n[{timestamp}] {estado}: {event.message or ''}\n")
+            
+        elif isinstance(event, MentalCommandEvent):
+            self.stats["mental_commands"] += 1
+            cmd = event.command.name
+            power = event.power * 100
+            
+            # Barra visual de potencia
+            bar = "█" * int(power / 5) + "░" * (20 - int(power / 5))
+            
+            emojis = {
+                "NEUTRAL": "😐", "PUSH": "👊", "PULL": "🤚",
+                "LIFT": "⬆️", "DROP": "⬇️", "LEFT": "⬅️",
+                "RIGHT": "➡️", "ROTATE_LEFT": "↪️", "ROTATE_RIGHT": "↩️",
+            }
+            emoji = emojis.get(cmd, "🧠")
+            
+            print(f"[{timestamp}] 🧠 MENTAL   | {emoji} {cmd:12} [{bar}] {power:5.1f}%")
+            
+        elif isinstance(event, FacialExpressionEvent):
+            self.stats["facial_expressions"] += 1
+            expr = event.expression.name
+            power = event.power * 100
+            
+            # Barra visual
+            bar = "█" * int(power / 5) + "░" * (20 - int(power / 5))
+            
+            emojis = {
+                "NEUTRAL": "😐", "BLINK": "😑", "WINK_LEFT": "😉",
+                "WINK_RIGHT": "😜", "SURPRISE": "😲", "FROWN": "😠",
+                "SMILE": "😊", "CLENCH": "😬", "LAUGH": "😄",
+                "LOOK_LEFT": "👀⬅️", "LOOK_RIGHT": "👀➡️",
+                "LOOK_UP": "👀⬆️", "LOOK_DOWN": "👀⬇️",
+            }
+            emoji = emojis.get(expr, "😀")
+            
+            print(f"[{timestamp}] 😀 FACIAL   | {emoji} {expr:12} [{bar}] {power:5.1f}%")
+            
+        elif isinstance(event, PerformanceMetricsEvent):
+            self.stats["performance_metrics"] += 1
+            
+            # Mostrar métricas si cambiaron significativamente
+            metrics_str = []
+            if event.focus:
+                metrics_str.append(f"Foco: {event.focus:.0%}")
+            if event.engagement:
+                metrics_str.append(f"Compromiso: {event.engagement:.0%}")
+            if event.stress:
+                metrics_str.append(f"Estrés: {event.stress:.0%}")
+            if event.relaxation:
+                metrics_str.append(f"Relajación: {event.relaxation:.0%}")
+            
+            if metrics_str:
+                print(f"[{timestamp}] 📈 METRICS | {' | '.join(metrics_str)}")
+            
+        elif isinstance(event, DeviceInfoEvent):
+            self.stats["device_info"] += 1
+            if event.battery_level:
+                self.last_battery = event.battery_level
+                print(f"[{timestamp}] 🔋 DEVICE  | Batería: {event.battery_level}%")
+            
+        elif isinstance(event, PowerBandEvent):
+            self.stats["power_bands"] += 1
+            if self.show_power_bands:
+                print(f"[{timestamp}] 📊 POWER   | {event.channel}: "
+                      f"θ={event.theta:.2f} α={event.alpha:.2f} "
+                      f"β={event.low_beta:.2f}/{event.high_beta:.2f} γ={event.gamma:.2f}")
+
+
+def main():
+    """
+    Función principal para capturar todos los streams de Emotiv.
+    """
+    print("\n🔧 CONFIGURACIÓN DE CAPTURA MULTI-STREAM")
+    print("=" * 50)
+    
+    # Verificar credenciales
+    client_id = os.environ.get("EMOTIV_CLIENT_ID")
+    client_secret = os.environ.get("EMOTIV_CLIENT_SECRET")
+    
+    if not client_id or not client_secret:
+        print("❌ ERROR: Configura las variables de entorno:")
+        print("   export EMOTIV_CLIENT_ID='tu_client_id'")
+        print("   export EMOTIV_CLIENT_SECRET='tu_client_secret'")
+        print("\n   Obtén tus credenciales en: https://www.emotiv.com/developer/")
+        return
+    
+    # Permitir al usuario elegir los streams
+    print("\n📡 STREAMS DISPONIBLES (sin licencia):")
+    print("   [1] com - Comandos mentales (push, left, right, etc.)")
+    print("   [2] fac - Expresiones faciales (smile, blink, wink, etc.)")
+    print("   [3] met - Métricas de rendimiento (atención, estrés)")
+    print("   [4] pow - Bandas de potencia (alpha, beta, theta)")
+    print("   [5] dev - Info del dispositivo (batería, señal)")
+    print("   [6] TODOS los streams")
+    
+    choice = input("\n¿Qué streams quieres capturar? [1-6, default=6]: ").strip() or "6"
+    
+    stream_options = {
+        "1": ["com"],
+        "2": ["fac"],
+        "3": ["met"],
+        "4": ["pow"],
+        "5": ["dev"],
+        "6": ["com", "fac", "met", "pow", "dev"],
+    }
+    
+    streams = stream_options.get(choice, ["com", "fac", "met"])
+    
+    print(f"\n✅ Streams seleccionados: {streams}")
+    
+    # Crear credenciales y source
+    credentials = CortexCredentials(
+        client_id=client_id,
+        client_secret=client_secret
+    )
+    
+    source = EmotivSource(
+        credentials=credentials,
+        streams=streams  # ¡Múltiples streams!
+    )
+    
+    # Monitor personalizado
+    show_pow = "pow" in streams
+    monitor = MultiStreamMonitor(show_power_bands=show_pow)
+    
+    pipeline = BCIPipeline(
+        source=source,
+        publishers=[monitor]
+    )
+    
+    print("\n🎧 Conectando con Emotiv Cortex...")
+    print("   (Si es la primera vez, acepta el permiso en la app Cortex)")
+    print("\n⌨️  Presiona Ctrl+C para detener\n")
+    
+    try:
+        with pipeline:
+            while True:
+                time.sleep(0.1)
+                
+    except KeyboardInterrupt:
+        print("\n\n🛑 Deteniendo captura...")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Salida esperada con todos los streams:**
+
+```
+🔧 CONFIGURACIÓN DE CAPTURA MULTI-STREAM
+==================================================
+
+📡 STREAMS DISPONIBLES (sin licencia):
+   [1] com - Comandos mentales (push, left, right, etc.)
+   [2] fac - Expresiones faciales (smile, blink, wink, etc.)
+   [3] met - Métricas de rendimiento (atención, estrés)
+   [4] pow - Bandas de potencia (alpha, beta, theta)
+   [5] dev - Info del dispositivo (batería, señal)
+   [6] TODOS los streams
+
+¿Qué streams quieres capturar? [1-6, default=6]: 6
+
+✅ Streams seleccionados: ['com', 'fac', 'met', 'pow', 'dev']
+
+🎧 Conectando con Emotiv Cortex...
+
+======================================================================
+🧠 MONITOR MULTI-STREAM DE EMOTIV - INICIADO
+======================================================================
+⏰ Inicio: 14:30:45
+----------------------------------------------------------------------
+📡 Streams activos: COM (mental), FAC (facial), MET (métricas)
+----------------------------------------------------------------------
+
+[14:30:46.123] ✅ CONECTADO: Connected to EPOC-X12345
+
+[14:30:46.234] 🔋 DEVICE  | Batería: 85%
+[14:30:46.345] 📈 METRICS | Foco: 45% | Compromiso: 62% | Relajación: 38%
+[14:30:46.456] 🧠 MENTAL   | 😐 NEUTRAL      [████████████████░░░░] 82.5%
+[14:30:46.567] 😀 FACIAL   | 😐 NEUTRAL      [████████████████████] 100.0%
+[14:30:46.789] 😀 FACIAL   | 😑 BLINK        [████████████████████] 100.0%
+[14:30:47.012] 🧠 MENTAL   | ⬅️ LEFT         [████████████████████] 95.2%
+[14:30:47.234] 😀 FACIAL   | 😊 SMILE        [████████████░░░░░░░░] 65.3%
+[14:30:47.456] 📈 METRICS | Foco: 78% | Compromiso: 71% | Estrés: 25%
+[14:30:47.678] 😀 FACIAL   | 😉 WINK_LEFT    [████████████████████] 100.0%
+...
+
+🛑 Deteniendo captura...
+
+======================================================================
+📊 RESUMEN DE SESIÓN
+======================================================================
+🧠 Comandos mentales capturados: 156
+😀 Expresiones faciales capturadas: 423
+📈 Actualizaciones de métricas: 89
+🔋 Último nivel de batería: 84%
+======================================================================
+```
+
+### Ejemplo 10: Uso del CLI
 
 ```bash
 # Ver ayuda
