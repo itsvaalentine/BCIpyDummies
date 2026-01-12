@@ -15,7 +15,7 @@ import ssl
 import threading
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import websocket
 
@@ -37,6 +37,7 @@ class CortexState(Enum):
 
     DISCONNECTED = auto()
     CONNECTING = auto()
+    REQUESTING_ACCESS = auto()  # New state for access request
     AUTHENTICATING = auto()
     QUERYING_HEADSETS = auto()
     CREATING_SESSION = auto()
@@ -96,8 +97,13 @@ class CortexCredentials:
         )
 
 
-# Type alias for mental command callback
+# Type aliases for callbacks
 MentalCommandCallback = Callable[[str, float], None]
+FacialExpressionCallback = Callable[[str, float], None]
+PerformanceMetricsCallback = Callable[[Dict[str, float]], None]
+PowerBandCallback = Callable[[List[Dict[str, Any]]], None]
+DeviceInfoCallback = Callable[[Dict[str, Any]], None]
+SystemEventCallback = Callable[[str, Dict[str, Any]], None]
 ConnectionCallback = Callable[[bool, str], None]
 ErrorCallback = Callable[[Exception], None]
 
@@ -107,17 +113,27 @@ class CortexClient:
 
     This client handles the complete authentication and subscription flow:
     1. Connect to WebSocket
-    2. Authorize with credentials
-    3. Query available headsets
-    4. Create a session with a headset
-    5. Subscribe to data streams
+    2. Request access if needed (for apps without permission)
+    3. Authorize with credentials
+    4. Query available headsets
+    5. Create a session with a headset
+    6. Subscribe to data streams
 
     Events are delivered via callbacks registered by the consumer.
 
+    Supported streams (no license required):
+        - com: Mental commands
+        - fac: Facial expressions
+        - met: Performance metrics (attention, stress, etc.)
+        - pow: Power band data (alpha, beta, gamma, etc.)
+        - dev: Device info (battery, signal quality)
+        - sys: System events
+
     Example usage:
         >>> credentials = CortexCredentials.from_environment()
-        >>> client = CortexClient(credentials)
-        >>> client.on_mental_command = lambda cmd, power: print(f"{cmd}: {power}")
+        >>> client = CortexClient(credentials, streams=["com", "fac", "met"])
+        >>> client.on_mental_command = lambda cmd, power: print(f"Mental: {cmd}: {power}")
+        >>> client.on_facial_expression = lambda expr, power: print(f"Facial: {expr}: {power}")
         >>> client.connect()
         >>> # ... events flow via callback ...
         >>> client.disconnect()
@@ -126,6 +142,7 @@ class CortexClient:
     CORTEX_URL = "wss://localhost:6868"
 
     # Request IDs for tracking responses
+    _ID_REQUEST_ACCESS = 0
     _ID_AUTHORIZE = 1
     _ID_QUERY_HEADSETS = 2
     _ID_CREATE_SESSION = 3
@@ -135,7 +152,7 @@ class CortexClient:
         self,
         credentials: CortexCredentials,
         headset_id: Optional[str] = None,
-        streams: Optional[list[str]] = None,
+        streams: Optional[List[str]] = None,
     ) -> None:
         """Initialize the Cortex client.
 
@@ -145,6 +162,7 @@ class CortexClient:
                        If None, connects to the first available headset.
             streams: List of data streams to subscribe to.
                     Defaults to ["com"] for mental commands.
+                    Available: "com", "fac", "met", "pow", "dev", "sys"
         """
         self._credentials = credentials
         self._target_headset_id = headset_id
@@ -160,9 +178,15 @@ class CortexClient:
         self._cortex_token: Optional[str] = None
         self._session_id: Optional[str] = None
         self._headset_id: Optional[str] = None
+        self._has_access: bool = False
 
-        # Callbacks
+        # Callbacks for different stream types
         self.on_mental_command: Optional[MentalCommandCallback] = None
+        self.on_facial_expression: Optional[FacialExpressionCallback] = None
+        self.on_performance_metrics: Optional[PerformanceMetricsCallback] = None
+        self.on_power_band: Optional[PowerBandCallback] = None
+        self.on_device_info: Optional[DeviceInfoCallback] = None
+        self.on_system_event: Optional[SystemEventCallback] = None
         self.on_connection_change: Optional[ConnectionCallback] = None
         self.on_error: Optional[ErrorCallback] = None
 
@@ -290,9 +314,9 @@ class CortexClient:
 
     def _on_ws_open(self, ws: websocket.WebSocket) -> None:
         """Handle WebSocket connection opened."""
-        logger.info("WebSocket connected, starting authentication...")
-        self._state = CortexState.AUTHENTICATING
-        self._send_authorize()
+        logger.info("WebSocket connected, requesting access...")
+        self._state = CortexState.REQUESTING_ACCESS
+        self._send_request_access()
 
     def _on_ws_message(self, ws: websocket.WebSocket, message: str) -> None:
         """Handle incoming WebSocket message."""
@@ -312,9 +336,24 @@ class CortexClient:
         request_id = data.get("id")
         if request_id is not None:
             self._handle_response(request_id, data)
-        elif "com" in data:
-            # Mental command stream data
+        else:
+            # Handle stream data
+            self._handle_stream_data(data)
+
+    def _handle_stream_data(self, data: Dict[str, Any]) -> None:
+        """Route incoming stream data to appropriate handlers."""
+        if "com" in data:
             self._handle_mental_command(data)
+        elif "fac" in data:
+            self._handle_facial_expression(data)
+        elif "met" in data:
+            self._handle_performance_metrics(data)
+        elif "pow" in data:
+            self._handle_power_band(data)
+        elif "dev" in data:
+            self._handle_device_info(data)
+        elif "sys" in data:
+            self._handle_system_event(data)
         else:
             logger.debug(f"Unhandled message: {data}")
 
@@ -344,8 +383,24 @@ class CortexClient:
     # API Request Methods
     # -------------------------------------------------------------------------
 
+    def _send_request_access(self) -> None:
+        """Request access to the Cortex API.
+
+        This is needed when the app hasn't been approved yet in Cortex.
+        The user will see a popup in Cortex to approve the app.
+        """
+        self._send_request(
+            "requestAccess",
+            {
+                "clientId": self._credentials.client_id,
+                "clientSecret": self._credentials.client_secret,
+            },
+            self._ID_REQUEST_ACCESS,
+        )
+
     def _send_authorize(self) -> None:
         """Send the authorize request."""
+        self._state = CortexState.AUTHENTICATING
         params: Dict[str, Any] = {
             "clientId": self._credentials.client_id,
             "clientSecret": self._credentials.client_secret,
@@ -395,7 +450,9 @@ class CortexClient:
         """Route response to appropriate handler based on request ID."""
         result = data.get("result")
 
-        if request_id == self._ID_AUTHORIZE:
+        if request_id == self._ID_REQUEST_ACCESS:
+            self._handle_request_access_response(result)
+        elif request_id == self._ID_AUTHORIZE:
             self._handle_authorize_response(result)
         elif request_id == self._ID_QUERY_HEADSETS:
             self._handle_query_headsets_response(result)
@@ -403,6 +460,32 @@ class CortexClient:
             self._handle_create_session_response(result)
         elif request_id == self._ID_SUBSCRIBE:
             self._handle_subscribe_response(result)
+
+    def _handle_request_access_response(self, result: Optional[Dict[str, Any]]) -> None:
+        """Handle requestAccess response.
+
+        If access was granted or already approved, proceed to authorize.
+        If access was rejected, emit an error.
+        """
+        if result is None:
+            # No result means we should proceed with authorize
+            logger.info("No access info, proceeding with authorization...")
+            self._send_authorize()
+            return
+
+        access_granted = result.get("accessGranted", False)
+        message = result.get("message", "")
+
+        if access_granted:
+            logger.info(f"Access granted: {message}")
+            self._has_access = True
+            self._send_authorize()
+        else:
+            # Access might be pending user approval in Cortex
+            # In this case, we should wait or notify the user
+            logger.warning(f"Access not granted: {message}")
+            # Still try to authorize - it might work if already approved
+            self._send_authorize()
 
     def _handle_authorize_response(self, result: Optional[Dict[str, Any]]) -> None:
         """Handle authorize response."""
@@ -422,7 +505,7 @@ class CortexClient:
         self._send_query_headsets()
 
     def _handle_query_headsets_response(
-        self, result: Optional[list[Dict[str, Any]]]
+        self, result: Optional[List[Dict[str, Any]]]
     ) -> None:
         """Handle queryHeadsets response."""
         if not result:
@@ -508,6 +591,174 @@ class CortexClient:
 
         if self.on_mental_command:
             self.on_mental_command(action, float(power))
+
+    def _handle_facial_expression(self, data: Dict[str, Any]) -> None:
+        """Handle facial expression stream data.
+
+        The 'fac' stream format from Cortex API:
+        ["eyeAct", "uAct", "uPow", "lAct", "lPow"]
+        - eyeAct: Eye action (e.g., blink, winkL, winkR, lookL, lookR, lookU, lookD)
+        - uAct: Upper face action (e.g., surprise, frown)
+        - uPow: Upper face action power (0.0-1.0)
+        - lAct: Lower face action (e.g., smile, clench, laugh, smirkLeft, smirkRight)
+        - lPow: Lower face action power (0.0-1.0)
+        """
+        fac_data = data.get("fac")
+        if not fac_data or not isinstance(fac_data, list):
+            logger.warning(f"Invalid facial expression data: {data}")
+            return
+
+        if not self.on_facial_expression:
+            return
+
+        # Parse eye action (index 0) - typically binary actions
+        if len(fac_data) > 0 and fac_data[0] and fac_data[0] != "neutral":
+            self.on_facial_expression(str(fac_data[0]), 1.0)
+
+        # Parse upper face action and power (indices 1, 2)
+        if len(fac_data) > 2 and fac_data[1] and fac_data[1] != "neutral":
+            power = float(fac_data[2]) if isinstance(fac_data[2], (int, float)) else 0.0
+            self.on_facial_expression(str(fac_data[1]), power)
+
+        # Parse lower face action and power (indices 3, 4)
+        if len(fac_data) > 4 and fac_data[3] and fac_data[3] != "neutral":
+            power = float(fac_data[4]) if isinstance(fac_data[4], (int, float)) else 0.0
+            self.on_facial_expression(str(fac_data[3]), power)
+
+    def _handle_performance_metrics(self, data: Dict[str, Any]) -> None:
+        """Handle performance metrics stream data.
+
+        The 'met' stream contains metrics like:
+        - eng: Engagement
+        - exc: Excitement (short-term)
+        - lex: Long-term excitement
+        - str: Stress/Frustration
+        - rel: Relaxation
+        - int: Interest/Affinity
+        - foc: Focus
+        """
+        met_data = data.get("met")
+        if not met_data or not isinstance(met_data, list):
+            logger.warning(f"Invalid performance metrics data: {data}")
+            return
+
+        if not self.on_performance_metrics:
+            return
+
+        # Map the array to named metrics
+        # Format: [eng.isActive, eng, exc.isActive, exc, lex, str.isActive, str, rel.isActive, rel, int.isActive, int, foc.isActive, foc]
+        metrics: Dict[str, float] = {}
+
+        try:
+            if len(met_data) >= 2:
+                metrics["engagement"] = float(met_data[1]) if met_data[0] else 0.0
+            if len(met_data) >= 4:
+                metrics["excitement"] = float(met_data[3]) if met_data[2] else 0.0
+            if len(met_data) >= 5:
+                metrics["long_excitement"] = float(met_data[4])
+            if len(met_data) >= 7:
+                metrics["stress"] = float(met_data[6]) if met_data[5] else 0.0
+            if len(met_data) >= 9:
+                metrics["relaxation"] = float(met_data[8]) if met_data[7] else 0.0
+            if len(met_data) >= 11:
+                metrics["interest"] = float(met_data[10]) if met_data[9] else 0.0
+            if len(met_data) >= 13:
+                metrics["focus"] = float(met_data[12]) if met_data[11] else 0.0
+        except (IndexError, TypeError, ValueError) as e:
+            logger.warning(f"Error parsing performance metrics: {e}")
+            return
+
+        self.on_performance_metrics(metrics)
+
+    def _handle_power_band(self, data: Dict[str, Any]) -> None:
+        """Handle power band stream data.
+
+        The 'pow' stream contains band powers for each channel:
+        [theta, alpha, low_beta, high_beta, gamma] for each channel
+        """
+        pow_data = data.get("pow")
+        if not pow_data or not isinstance(pow_data, list):
+            logger.warning(f"Invalid power band data: {data}")
+            return
+
+        if not self.on_power_band:
+            return
+
+        # Channels in order (for 14-channel EPOC)
+        channels = ["AF3", "F7", "F3", "FC5", "T7", "P7", "O1",
+                   "O2", "P8", "T8", "FC6", "F4", "F8", "AF4"]
+
+        band_data: List[Dict[str, Any]] = []
+
+        # Each channel has 5 values: theta, alpha, low_beta, high_beta, gamma
+        bands_per_channel = 5
+        for i, channel in enumerate(channels):
+            start = i * bands_per_channel
+            if start + bands_per_channel <= len(pow_data):
+                band_data.append({
+                    "channel": channel,
+                    "theta": float(pow_data[start]),
+                    "alpha": float(pow_data[start + 1]),
+                    "low_beta": float(pow_data[start + 2]),
+                    "high_beta": float(pow_data[start + 3]),
+                    "gamma": float(pow_data[start + 4]),
+                })
+
+        self.on_power_band(band_data)
+
+    def _handle_device_info(self, data: Dict[str, Any]) -> None:
+        """Handle device info stream data.
+
+        The 'dev' stream contains device status:
+        - Battery level
+        - Signal strength
+        - Contact quality per sensor
+        """
+        dev_data = data.get("dev")
+        if not dev_data or not isinstance(dev_data, list):
+            logger.warning(f"Invalid device info data: {data}")
+            return
+
+        if not self.on_device_info:
+            return
+
+        info: Dict[str, Any] = {}
+
+        try:
+            if len(dev_data) >= 1:
+                info["battery"] = dev_data[0]
+            if len(dev_data) >= 2:
+                info["signal"] = dev_data[1]
+            if len(dev_data) >= 3 and isinstance(dev_data[2], list):
+                # Contact quality for each sensor
+                channels = ["AF3", "F7", "F3", "FC5", "T7", "P7", "O1",
+                           "O2", "P8", "T8", "FC6", "F4", "F8", "AF4"]
+                info["contact_quality"] = dict(zip(channels, dev_data[2]))
+        except (IndexError, TypeError) as e:
+            logger.warning(f"Error parsing device info: {e}")
+            return
+
+        self.on_device_info(info)
+
+    def _handle_system_event(self, data: Dict[str, Any]) -> None:
+        """Handle system events.
+
+        System events include headset connection/disconnection,
+        battery warnings, etc.
+        """
+        sys_data = data.get("sys")
+        if not sys_data:
+            logger.warning(f"Invalid system event data: {data}")
+            return
+
+        if not self.on_system_event:
+            return
+
+        # System events are typically arrays with event info
+        if isinstance(sys_data, list) and len(sys_data) >= 1:
+            event_type = str(sys_data[0])
+            event_data = sys_data[1] if len(sys_data) > 1 else {}
+            self.on_system_event(event_type, event_data if isinstance(event_data, dict) else {"value": event_data})
 
     def _handle_api_error(self, data: Dict[str, Any]) -> None:
         """Handle Cortex API error response."""

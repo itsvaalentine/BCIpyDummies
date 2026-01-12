@@ -21,6 +21,7 @@ BCIpyDummies acts as a translator between your brain and your computer. It conne
 | [Emotiv Setup](hardware/emotiv-setup.md) | Hardware configuration guide |
 | [API Reference](api/emotiv-controller.md) | Class and method documentation |
 | [Architecture](architecture/system-design.md) | System design overview |
+| [Arquitectura Completa (ES)](architecture/ARQUITECTURA_COMPLETA.md) | 🇪🇸 Documentación completa en español |
 
 ## Current Features
 
