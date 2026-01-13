@@ -1,155 +1,182 @@
-# BCIpyDummies
+```
+╔══════════════════════════════════════════════════════════════════════════╗
+║                                                                          ║
+║   ____   ____ ___            ____                            _           ║
+║  | __ ) / ___|_ _|_ __  _   |  _ \ _   _ _ __ ___  _ __ ___ (_) ___  ___ ║
+║  |  _ \| |    | || '_ \| | | | | | | | | '_ ` _ \| '_ ` _ \| |/ _ \/ __|║
+║  | |_) | |___ | || |_) | |_| | |_| | |_| | | | | | | | | | | |  __/\__ \║
+║  |____/ \____|___| .__/ \__, |____/ \__,_|_| |_| |_|_| |_| |_|\___||___/║
+║                  |_|    |___/                                            ║
+║                                                                          ║
+║                       **For dummies 4 real**                             ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+```
 
-**Middleware library to bridge Emotiv EEG headsets with Windows applications through mental commands.**
-
-*For dummies 4 real*
-
-[![CI](https://github.com/itsvaalentine/BCIpyDummies/actions/workflows/tests.yml/badge.svg)](https://github.com/itsvaalentine/BCIpyDummies/actions/workflows/tests.yml)
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](https://www.microsoft.com/windows)
 
 ---
 
-## Overview
+**Middleware para conectar headsets EEG Emotiv con aplicaciones de Windows mediante comandos mentales.**
 
-BCIpyDummies acts as a translator between Emotiv Cortex API (via WebSocket) and Windows applications via keyboard input simulation. Train mental commands in the Emotiv app, then use them to control any Windows application.
+BCIpyDummies actúa como traductor entre tu cerebro y tu computadora.  Captura comandos mentales desde tu headset Emotiv y los convierte en pulsaciones de teclado para controlar cualquier aplicación de Windows.
 
-**Current capabilities:**
-- Connect to Emotiv headsets via Cortex API
-- Process mental commands (left, right, lift)
-- Simulate keyboard input to target Windows applications
-- List available windows on the system
+---
 
-## Requirements
+## 🎯 Casos de Uso
 
-- **OS:** Windows 10/11
-- **Python:** 3.9+
-- **Hardware:** Emotiv EEG headset (EPOC X, EPOC+, Insight, etc.)
-- **Software:** [Emotiv Cortex](https://www.emotiv.com/emotiv-cortex/) app installed and running
+- 🎮 Controla videojuegos con tu mente
+- 🖥️ Control de aplicaciones manos libres
+- 🔬 Investigación y experimentación BCI
+- ♿ Soluciones de accesibilidad
 
-## Installation
+---
 
-```bash
-# Clone the repository
-git clone https://github.com/itsvaalentine/BCIpyDummies.git
-cd BCIpyDummies
+## 🏗️ Arquitectura de Alto Nivel
 
-# Install in development mode
-pip install -e .
+```
+┌───────────────────────────────���─────────────────────────────────────────────┐
+│                          BCIPipeline (Orquestador)                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌────────────────┐    ┌──────────────────┐    ┌────────────────────────┐  │
+│  │    SOURCES     │───▶│   PROCESSORS     │───▶│     PUBLISHERS         │  │
+│  │   (Entrada)    │    │ (Procesamiento)  │    │      (Salida)          │  │
+│  └────────────────┘    └──────────────────┘    └────────────────────────┘  │
+│                                                                             │
+│  • EmotivSource        • ThresholdProcessor    • KeyboardPublisher         │
+│  • MockSource          • DebounceProcessor     • ConsolePublisher          │
+│                        • CommandMapper                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Configuration
+📖 **[Ver Arquitectura Completa →](ARQUITECTURA_COMPLETA.md)**
 
-### Emotiv API Credentials
+---
 
-You need Emotiv developer credentials. Get them at [emotiv.com/developer](https://www.emotiv.com/developer/).
+## 📋 Requisitos
 
-**Set credentials via environment variables (recommended):**
+| Requisito | Versión |
+|-----------|---------|
+| Sistema Operativo | Windows 10/11 |
+| Python | 3.9+ |
+| Hardware | Headset Emotiv EEG (EPOC X, EPOC+, Insight, Flex) |
+| Software | [Emotiv Cortex](https://www.emotiv.com/emotiv-cortex/) |
+
+---
+
+## 🚀 Inicio Rápido
 
 ```bash
-export EMOTIV_CLIENT_ID="your_client_id"
-export EMOTIV_CLIENT_SECRET="your_client_secret"
+pip install bcipydummies
 ```
-
-> **Security Note:** Never commit credentials to version control.
-
-## Usage
-
-### Basic Example
 
 ```python
 from bcipydummies.emotiv_controller import EmotivController
 
-# List available windows
+# Listar ventanas disponibles
 windows = EmotivController.list_windows()
-for window in windows:
-    print(window)
+print(windows)
 
-# Connect to a specific window
-controller = EmotivController("Your Target Window Name")
-thread = controller.connect()
-
-# The controller will now:
-# - left command (80%+ power) -> 'A' key
-# - right command -> 'D' key
-# - lift command -> 'SPACE' key
-
-# When done
-controller.close()
+# Conectar y controlar una aplicación
+controller = EmotivController("Tu Ventana Objetivo")
+controller.connect()
 ```
-
-### Mental Command Mapping
-
-| Mental Command | Key | Power Threshold |
-|---------------|-----|-----------------|
-| `left` | A | 80% |
-| `right` | D | 0% |
-| `lift` | SPACE | 0% |
-
-## Project Structure
-
-```
-bcipydummies/
-├── __init__.py
-└── emotiv_controller.py    # Main controller module
-
-tests/
-└── test_emotiv_controller.py
-```
-
-### Key Components
-
-**EmotivController** (`emotiv_controller.py`):
-- `__init__(window_name)` - Initialize and find target window
-- `connect()` - Start WebSocket connection to Cortex API
-- `close()` - Close the connection
-- `list_windows()` - Static method to enumerate visible windows
-
-## Development
-
-### Running Tests
-
-```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest tests/ -v
-```
-
-### Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `websocket-client` | Cortex API communication |
-| `pywin32` | Windows API (window management, keyboard simulation) |
-| `pytest` | Testing framework |
-
-## Known Limitations
-
-- **Windows only** - Uses `win32gui` for window/keyboard control
-- **Emotiv headsets only** - Currently no support for other EEG devices
-- **Hardcoded key mappings** - Customization requires code changes
-
-## Roadmap
-
-- [ ] Configuration file support
-- [ ] Cross-platform keyboard simulation
-- [ ] CLI interface
-- [ ] Additional EEG source adapters
-- [ ] Configurable command mappings and thresholds
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for new functionality
-4. Submit a pull request
-
-## License
-
-See [LICENSE](LICENSE) for details.
 
 ---
 
-**Note:** This project requires trained mental commands in the Emotiv app. For best results, spend time training neutral state and individual commands before using BCIpyDummies.
+## 📚 Documentación
+
+### 🇪🇸 Español
+
+| Documento | Descripción |
+|-----------|-------------|
+| 📖 **[ARQUITECTURA_COMPLETA.md](ARQUITECTURA_COMPLETA.md)** | Guía completa:  estructura, flujo de datos, componentes y ejemplos |
+
+### 🇬🇧 English
+
+| Section | Description |
+|---------|-------------|
+| 📥 [Installation](docs/getting-started/installation.md) | System requirements and setup |
+| ⚡ [Quickstart](docs/getting-started/quickstart.md) | Get running in 5 minutes |
+| 🎧 [Emotiv Setup](docs/hardware/emotiv-setup.md) | Hardware configuration guide |
+| 📖 [API Reference](docs/api/emotiv-controller.md) | Class and method documentation |
+| 🏛️ [System Design](docs/architecture/system-design.md) | Architecture overview |
+
+---
+
+## 📂 Estructura del Proyecto
+
+```
+bcipydummies/
+├── __init__.py              # Punto de entrada
+├── __main__.py              # CLI:  python -m bcipydummies
+├── emotiv_controller.py     # Controlador legacy
+│
+├── core/                    # Núcleo del sistema
+│   ├── config.py            # Configuración
+│   ├── engine.py            # BCIPipeline - Orquestador principal
+│   ├── events.py            # Tipos de eventos
+│   ├── exceptions.py        # Excepciones personalizadas
+│   └── factory.py           # Funciones factory
+│
+├── sources/                 # Fuentes de datos EEG
+├── processors/              # Procesadores de señal
+└── publishers/              # Publicadores de salida
+```
+
+---
+
+## ✨ Características
+
+- ✅ Conexión WebSocket a Emotiv Cortex API
+- ✅ Procesamiento de comandos mentales (left, right, lift)
+- ✅ Simulación de teclado para aplicaciones Windows
+- ✅ Utilidad de enumeración de ventanas
+- ✅ Fuente mock para pruebas sin hardware
+- ✅ Arquitectura modular y extensible
+
+---
+
+## 👥 Colaboradores
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/itsvaalentine">
+        <img src="https://avatars.githubusercontent.com/u/96605134?v=4" width="100px;" alt="itsvaalentine"/>
+        <br />
+        <sub><b>@itsvaalentine</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Gaelite">
+        <img src="https://avatars.githubusercontent.com/u/129134162?v=4" width="100px;" alt="Gaelite"/>
+        <br />
+        <sub><b>@Gaelite</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/BernardoAguayoOrtega">
+        <img src="https://avatars.githubusercontent.com/u/63122476?v=4" width="100px;" alt="BernardoAguayoOrtega"/>
+        <br />
+        <sub><b>@BernardoAguayoOrtega</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 📬 Soporte
+
+- 🐛 [GitHub Issues](https://github.com/itsvaalentine/BCIpyDummies/issues) - Reportar bugs
+- 💬 [GitHub Discussions](https://github.com/itsvaalentine/BCIpyDummies/discussions) - Preguntas
+
+---
+
+```
+                    Hecho con 🧠 por @itsvaalentine
+```

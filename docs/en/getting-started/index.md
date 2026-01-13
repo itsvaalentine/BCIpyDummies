@@ -4,8 +4,8 @@ Welcome to BCIpyDummies! This section will help you get up and running.
 
 ## Quick Start Path
 
-1. **[Installation](installation.md)** - Set up Python, dependencies, and credentials
-2. **[Quickstart](quickstart.md)** - Get running in 5 minutes
+1. **[Installation](./installation.md)** - Set up Python, dependencies, and credentials
+2. **[Quickstart](./quickstart.md)** - Get running in 5 minutes
 3. **[Emotiv Setup](../hardware/emotiv-setup.md)** - Configure your headset
 
 ## Prerequisites
