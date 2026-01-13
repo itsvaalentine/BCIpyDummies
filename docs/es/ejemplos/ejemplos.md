@@ -1,469 +1,346 @@
 # 🧪 Ejemplos Prácticos
 
-Esta guía contiene ejemplos de código prácticos para usar BCIpyDummies.  Cada ejemplo es independiente y puede ejecutarse por separado.
+Esta guía contiene ejemplos de código listos para usar con BCIpyDummies.  Cada ejemplo está explicado paso a paso para que cualquier persona pueda usarlo, incluso sin experiencia en programación.
 
 ## 📋 Índice
 
-1. [Ejemplo 1: Uso Básico con MockSource](#ejemplo-1-uso-básico-con-mocksource-sin-hardware)
-2. [Ejemplo 2: Pipeline Completo con Procesadores](#ejemplo-2-pipeline-completo-con-procesadores)
-3. [Ejemplo 3: Secuencia de Eventos Scripted](#ejemplo-3-secuencia-de-eventos-scripted)
-4. [Ejemplo 4: Publicador Personalizado](#ejemplo-4-crear-un-publicador-personalizado)
-5. [Ejemplo 5: Procesador Personalizado](#ejemplo-5-crear-un-procesador-personalizado)
-6. [Ejemplo 6: Configuración con Factory](#ejemplo-6-uso-con-factory-configuración-simplificada)
-7. [Ejemplo 7: Control de Ventana Real](#ejemplo-7-control-de-ventana-real-windows)
-8. [Ejemplo 8: Hardware Real Emotiv](#ejemplo-8-uso-con-hardware-real-emotiv)
-
-> 💡 **¿Nuevo en BCIpyDummies? ** Empieza con la [Guía Deep Dive](deep-dive.md) para entender la arquitectura primero.
+1. [Ejemplo 1: Controlar el Notepad con tu Mente](#ejemplo-1-controlar-el-notepad-con-tu-mente)
+2. [Ejemplo 2: Mover el Mouse con Comandos Mentales](#ejemplo-2-mover-el-mouse-con-comandos-mentales)
+3. [Ejemplo 3: Controlar YouTube (Play/Pausa/Siguiente)](#ejemplo-3-controlar-youtube-playpausa-siguiente)
+4. [Ejemplo 4: Jugar un Juego de Carreras](#ejemplo-4-jugar-un-juego-de-carreras)
+5. [Ejemplo 5: Control de Presentaciones PowerPoint](#ejemplo-5-control-de-presentaciones-powerpoint)
 
 ---
 
-## Ejemplo 1: Uso Básico con MockSource (Sin Hardware)
+## Antes de Empezar
+
+### ⚙️ Configuración de Credenciales
+
+Todos los ejemplos necesitan tus credenciales de Emotiv.  Para obtenerlas:
+
+1. Ve a [emotiv.com/developer](https://www.emotiv.com/developer/)
+2. Crea una cuenta o inicia sesión
+3. Crea una nueva aplicación
+4. Copia tu **Client ID** y **Client Secret**
+
+En los ejemplos verás esto: 
 
 ```python
-"""
-Este ejemplo funciona sin hardware Emotiv.
-Perfecto para probar la librería. 
-"""
-import time
-from bcipydummies import BCIPipeline, MockSource, ConsolePublisher
-from bcipydummies.core. events import MentalCommand
-
-# Crear fuente simulada que genera eventos aleatorios
-source = MockSource(
-    source_id="test-source",
-    random_interval=1.0,  # Un evento cada segundo
-    random_commands=[
-        MentalCommand.LEFT,
-        MentalCommand. RIGHT,
-        MentalCommand.PUSH,
-        MentalCommand.NEUTRAL,
-    ]
-)
-
-# Crear publicador de consola
-console = ConsolePublisher(prefix="[BCI]")
-
-# Crear y ejecutar el pipeline
-pipeline = BCIPipeline(
-    source=source,
-    publishers=[console]
-)
-
-# Usar como context manager
-with pipeline:
-    print("Pipeline iniciado. Presiona Ctrl+C para detener.")
-    try:
-        time.sleep(10)  # Ejecutar por 10 segundos
-    except KeyboardInterrupt: 
-        pass
-
-print("Pipeline detenido.")
-print(f"Estadísticas: {pipeline.statistics}")
+client_id = "tu_client_id_aqui"
+client_secret = "tu_client_secret_aqui"
 ```
 
+**¿Qué poner ahí?** Reemplaza el texto entre comillas con tus credenciales: 
+
+```python
+# ❌ INCORRECTO - No copies esto literalmente
+client_id = "tu_client_id_aqui"
+
+# ✅ CORRECTO - Usa tus credenciales reales
+client_id = "abc123def456ghi789"
+```
+
+> ⚠️ **Importante**: Las comillas `""` deben quedarse, solo cambia el texto de adentro. 
+
+### 📋 Requisitos para Todos los Ejemplos
+
+- ✅ Windows 10 u 11
+- ✅ Python 3.9 o superior instalado
+- ✅ BCIpyDummies instalado (`pip install -e .`)
+- ✅ Emotiv Cortex ejecutándose
+- ✅ Headset Emotiv conectado
+- ✅ Comandos mentales entrenados (left, right, lift, push)
+
 ---
 
-## Ejemplo 2: Pipeline Completo con Procesadores
+## Ejemplo 1: Controlar el Notepad con tu Mente
+
+**¿Qué hace?** Escribe letras en el Notepad usando comandos mentales.
+
+| Comando Mental | Acción |
+|----------------|--------|
+| `left` | Escribe la letra "A" |
+| `right` | Escribe la letra "D" |
+| `push` | Escribe la letra "W" |
+| `lift` | Escribe un espacio |
+
+### Pasos:
+
+1. Abre el Notepad en Windows (busca "Notepad" en el menú inicio)
+2. Copia el código de abajo en un archivo llamado `controlar_notepad.py`
+3. Ejecuta:  `python controlar_notepad.py`
 
 ```python
 """
-Ejemplo con cadena de procesadores.
+EJEMPLO 1: Controlar Notepad con la Mente
+=========================================
+Este script te permite escribir en Notepad usando comandos mentales.
 """
-from bcipydummies import (
-    BCIPipeline,
-    MockSource,
-    ConsolePublisher,
-    ThresholdProcessor,
-    DebounceProcessor,
-    CommandMapper
-)
 
-# Fuente simulada
-source = MockSource()
+# ============================================
+# PASO 1: CONFIGURACIÓN - EDITA ESTA SECCIÓN
+# ============================================
 
-# Cadena de procesadores
-processors = [
-    # 1. Filtrar por umbral de potencia
-    ThresholdProcessor(
-        thresholds={
-            "left": 0.7,   # Solo left con 70%+ potencia
-            "right": 0.6,  # Solo right con 60%+ potencia
-        },
-        default_threshold=0.5
-    ),
+# Pon tus credenciales de Emotiv aquí (entre las comillas)
+# Ejemplo: client_id = "abc123xyz"
+client_id = "tu_client_id_aqui"
+client_secret = "tu_client_secret_aqui"
+
+# Nombre de la ventana a controlar
+# Debe coincidir EXACTAMENTE con el título de la ventana
+# Para Notepad en español puede ser "Sin título de bloc de notas" o "Untitled - Notepad"
+ventana_objetivo = "Untitled - Notepad"
+
+# ============================================
+# PASO 2: CÓDIGO DEL PROGRAMA (NO MODIFICAR)
+# ============================================
+
+import time
+from bcipydummies import BCIPipeline
+from bcipydummies.sources. emotiv import EmotivSource
+from bcipydummies.sources.emotiv.cortex_client import CortexCredentials
+from bcipydummies. processors import ThresholdProcessor, CommandMapper
+from bcipydummies.publishers. keyboard. windows import WindowsKeyboardPublisher
+from bcipydummies.core.events import MentalCommand
+
+def main():
+    print("=" * 50)
+    print("🧠 CONTROL DE NOTEPAD CON LA MENTE")
+    print("=" * 50)
     
-    # 2. Evitar comandos repetidos
-    DebounceProcessor(cooldown=0.3),  # 300ms entre comandos
+    # Verificar que las credenciales fueron configuradas
+    if client_id == "tu_client_id_aqui": 
+        print("\n❌ ERROR: No has configurado tus credenciales!")
+        print("   Abre este archivo y edita las líneas:")
+        print('   client_id = "tu_client_id_aqui"')
+        print('   client_secret = "tu_client_secret_aqui"')
+        print("\n   Reemplaza el texto entre comillas con tus credenciales reales.")
+        return
     
-    # 3. Mapear comandos a teclas
-    CommandMapper(
-        mapping={
-            "left": "A",
-            "right": "D",
-            "push": "W",
-            "lift": "SPACE"
+    # Mostrar ventanas disponibles para ayudar al usuario
+    print("\n📋 Ventanas disponibles en tu sistema:")
+    print("-" * 40)
+    ventanas = WindowsKeyboardPublisher.list_windows()
+    for i, v in enumerate(ventanas[: 15]):  # Mostrar solo las primeras 15
+        print(f"   {i+1}. {v}")
+    print("-" * 40)
+    print(f"\n🎯 Buscando ventana:  '{ventana_objetivo}'")
+    
+    # Verificar que la ventana existe
+    if ventana_objetivo not in ventanas:
+        print(f"\n❌ ERROR: No se encontró la ventana '{ventana_objetivo}'")
+        print("   Asegúrate de que Notepad esté abierto.")
+        print("   El nombre debe coincidir EXACTAMENTE (mayúsculas y minúsculas).")
+        return
+    
+    print(f"✅ Ventana encontrada!")
+    
+    # Crear credenciales
+    credentials = CortexCredentials(
+        client_id=client_id,
+        client_secret=client_secret
+    )
+    
+    # Crear la fuente (conexión con el headset)
+    source = EmotivSource(
+        credentials=credentials,
+        streams=["com"]  # Solo comandos mentales
+    )
+    
+    # Crear procesadores
+    processors = [
+        # Filtrar señales débiles (solo acepta señales fuertes)
+        ThresholdProcessor(
+            thresholds={
+                "left": 0.6,    # 60% de potencia mínima
+                "right": 0.6,
+                "push": 0.6,
+                "lift": 0.5,
+            },
+            default_threshold=0.5
+        ),
+        # Mapear comandos a teclas
+        CommandMapper(
+            mapping={
+                "left": "A",
+                "right": "D",
+                "push": "W",
+                "lift": "SPACE"
+            }
+        )
+    ]
+    
+    # Crear el publicador de teclado
+    keyboard = WindowsKeyboardPublisher(
+        window_name=ventana_objetivo,
+        command_mapping={
+            MentalCommand.LEFT: "A",
+            MentalCommand. RIGHT: "D",
+            MentalCommand.PUSH: "W",
+            MentalCommand.LIFT: "SPACE"
         }
     )
-]
+    
+    # Crear el pipeline
+    pipeline = BCIPipeline(
+        source=source,
+        processors=processors,
+        publishers=[keyboard]
+    )
+    
+    # Instrucciones para el usuario
+    print("\n" + "=" * 50)
+    print("📝 INSTRUCCIONES:")
+    print("=" * 50)
+    print("   • Piensa 'LEFT'  → Escribe 'A'")
+    print("   • Piensa 'RIGHT' → Escribe 'D'")
+    print("   • Piensa 'PUSH'  → Escribe 'W'")
+    print("   • Piensa 'LIFT'  → Escribe ESPACIO")
+    print("\n   Presiona Ctrl+C para detener el programa")
+    print("=" * 50)
+    
+    # Ejecutar
+    try:
+        with pipeline: 
+            print("\n🚀 ¡Pipeline activo! Usa tus comandos mentales...")
+            while True:
+                time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n\n🛑 Programa detenido por el usuario.")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        print("   Verifica que Emotiv Cortex esté ejecutándose.")
 
-# Publicadores
-publishers = [ConsolePublisher(prefix="[EVENTO]")]
-
-# Crear pipeline
-pipeline = BCIPipeline(
-    source=source,
-    processors=processors,
-    publishers=publishers
-)
-
-# Ejecutar
-with pipeline:
-    import time
-    time.sleep(30)
+if __name__ == "__main__":
+    main()
 ```
 
 ---
 
-## Ejemplo 3: Secuencia de Eventos Scripted
+## Ejemplo 2: Mover el Mouse con Comandos Mentales
+
+**¿Qué hace?** Mueve el cursor del mouse en la pantalla usando tu mente.
+
+| Comando Mental | Acción |
+|----------------|--------|
+| `left` | Mueve el mouse a la izquierda |
+| `right` | Mueve el mouse a la derecha |
+| `push` | Mueve el mouse hacia arriba |
+| `lift` | Hace clic |
+
+### Pasos:
+
+1. Copia el código en un archivo llamado `mover_mouse.py`
+2. Ejecuta: `python mover_mouse.py`
 
 ```python
 """
-Ejemplo con secuencia predefinida de eventos. 
-Útil para pruebas reproducibles.
+EJEMPLO 2: Mover el Mouse con la Mente
+======================================
+Este script mueve el cursor del mouse usando comandos mentales.
 """
-from bcipydummies. sources.mock import MockSource, ScriptedEvent, create_test_script
-from bcipydummies.core.events import MentalCommand
-from bcipydummies import BCIPipeline, ConsolePublisher
 
-# Crear script de eventos
-script = create_test_script(
-    commands=["neutral", "left", "left", "right", "push", "neutral"],
-    interval=0.5,  # 500ms entre eventos
-    power=0.85
-)
+# ============================================
+# PASO 1: CONFIGURACIÓN - EDITA ESTA SECCIÓN
+# ============================================
 
-# Fuente con script
-source = MockSource(script=script, loop_script=False)
+# Pon tus credenciales de Emotiv aquí (entre las comillas)
+client_id = "tu_client_id_aqui"
+client_secret = "tu_client_secret_aqui"
 
-# Pipeline
-pipeline = BCIPipeline(
-    source=source,
-    publishers=[ConsolePublisher()]
-)
+# Cuántos píxeles mover el mouse por cada comando
+# Número más alto = movimiento más rápido
+pixeles_por_movimiento = 50
 
-with pipeline:
-    import time
-    time.sleep(5)  # Esperar que termine el script
-```
+# ============================================
+# PASO 2: CÓDIGO DEL PROGRAMA (NO MODIFICAR)
+# ============================================
 
----
-
-## Ejemplo 4: Crear un Publicador Personalizado
-
-```python
-"""
-Ejemplo de cómo crear tu propio publicador.
-"""
-from bcipydummies. publishers.base import Publisher
-from bcipydummies.core.events import EEGEvent, MentalCommandEvent
-
-class MiPublicador(Publisher):
-    """Publicador personalizado que cuenta eventos por comando."""
-    
-    def __init__(self):
-        self._is_ready = False
-        self. contadores = {}
-    
-    def start(self) -> None:
-        self._is_ready = True
-        self.contadores = {}
-        print("MiPublicador iniciado!")
-    
-    def stop(self) -> None:
-        self._is_ready = False
-        print(f"MiPublicador detenido. Contadores: {self.contadores}")
-    
-    @property
-    def is_ready(self) -> bool:
-        return self._is_ready
-    
-    def publish(self, event:  EEGEvent) -> None:
-        if isinstance(event, MentalCommandEvent):
-            cmd = event.command.name
-            self.contadores[cmd] = self.contadores.get(cmd, 0) + 1
-            print(f"Comando {cmd} detectado ({self.contadores[cmd]} veces)")
-
-
-# Usar el publicador personalizado
-from bcipydummies import BCIPipeline, MockSource
-
-source = MockSource()
-mi_pub = MiPublicador()
-
-with BCIPipeline(source=source, publishers=[mi_pub]):
-    import time
-    time. sleep(10)
-```
-
----
-
-## Ejemplo 5: Crear un Procesador Personalizado
-
-```python
-"""
-Ejemplo de procesador personalizado que filtra comandos NEUTRAL.
-"""
-from bcipydummies.processors.base import Processor
-from bcipydummies. core.events import EEGEvent, MentalCommandEvent, MentalCommand
-from typing import Optional
-
-class FiltrarNeutral(Processor):
-    """Filtra todos los eventos NEUTRAL."""
-    
-    def process(self, event: EEGEvent) -> Optional[EEGEvent]:
-        if isinstance(event, MentalCommandEvent):
-            if event.command == MentalCommand.NEUTRAL: 
-                return None  # Filtrar
-        return event  # Pasar el resto
-    
-    def reset(self) -> None:
-        pass  # No tiene estado
-
-
-# Usar el procesador
-from bcipydummies import BCIPipeline, MockSource, ConsolePublisher
-
-pipeline = BCIPipeline(
-    source=MockSource(),
-    processors=[FiltrarNeutral()],
-    publishers=[ConsolePublisher()]
-)
-
-with pipeline:
-    import time
-    time. sleep(10)
-```
-
----
-
-## Ejemplo 6: Uso con Factory (Configuración Simplificada)
-
-```python
-"""
-Uso de funciones factory para crear pipelines desde configuración.
-"""
-from bcipydummies import create_pipeline, Config, ThresholdConfig, KeyboardConfig, EmotivConfig
-
-# Crear configuración
-config = Config(
-    emotiv=EmotivConfig(
-        client_id="tu_client_id",
-        client_secret="tu_client_secret"
-    ),
-    thresholds=ThresholdConfig(
-        default=0.5,
-        left=0.8,
-        right=0.6
-    ),
-    keyboard=KeyboardConfig(
-        left="a",
-        right="d",
-        lift="space"
-    ),
-    target_window="Notepad"
-)
-
-# Crear pipeline con factory
-# Usa "simulated" en lugar de "emotiv" para pruebas sin hardware
-pipeline = create_pipeline(config, source_type="simulated")
-
-with pipeline:
-    input("Presiona Enter para detener...")
-```
-
----
-
-## Ejemplo 7: Control de Ventana Real (Windows)
-
-```python
-"""
-Ejemplo real controlando una ventana de Windows. 
-NOTA: Requiere Windows y la aplicación target abierta.
-"""
-from bcipydummies import BCIPipeline, MockSource, ThresholdProcessor, CommandMapper
-from bcipydummies. publishers.keyboard. windows import WindowsKeyboardPublisher
-from bcipydummies.core.events import MentalCommand
-
-# Listar ventanas disponibles
-print("Ventanas disponibles:")
-for window in WindowsKeyboardPublisher. list_windows()[: 20]:
-    print(f"  - {window}")
-
-# Configurar
-target_window = "Notepad"  # Cambia esto por tu ventana
-
-# Fuente simulada para pruebas
-source = MockSource()
-
-# Procesadores
-processors = [
-    ThresholdProcessor(thresholds={"left": 0.7, "right": 0.7}),
-    CommandMapper(mapping={
-        "left": "A",
-        "right": "D", 
-        "push": "W",
-        "lift": "SPACE"
-    })
-]
-
-# Publisher de teclado
-keyboard = WindowsKeyboardPublisher(
-    window_name=target_window,
-    command_mapping={
-        MentalCommand.LEFT: "A",
-        MentalCommand. RIGHT: "D",
-        MentalCommand.PUSH: "W",
-        MentalCommand.LIFT: "SPACE"
-    }
-)
-
-# Pipeline
-pipeline = BCIPipeline(
-    source=source,
-    processors=processors,
-    publishers=[keyboard]
-)
-
-try:
-    with pipeline:
-        print(f"Controlando '{target_window}'...")
-        print("Presiona Ctrl+C para detener.")
-        import time
-        while True:
-            time.sleep(1)
-except KeyboardInterrupt:
-    print("\nDetenido.")
-```
-
----
-
-## Ejemplo 8: Uso con Hardware Real Emotiv
-
-```python
-"""
-Ejemplo de uso con hardware REAL Emotiv.
-Muestra los comandos mentales recibidos del dispositivo en tiempo real. 
-
-REQUISITOS:
-- Emotiv Cortex app ejecutándose
-- Headset Emotiv conectado y configurado
-- Comandos mentales entrenados en EmotivBCI
-- Credenciales de desarrollador (client_id, client_secret)
-"""
-import os
 import time
-from datetime import datetime
-
-from bcipydummies import BCIPipeline, ConsolePublisher
+import ctypes
+from bcipydummies import BCIPipeline
 from bcipydummies.sources.emotiv import EmotivSource
 from bcipydummies.sources.emotiv. cortex_client import CortexCredentials
-from bcipydummies. core.events import MentalCommandEvent, ConnectionEvent, EEGEvent
-from bcipydummies.publishers.base import Publisher
+from bcipydummies.processors import ThresholdProcessor
+from bcipydummies.publishers. base import Publisher
+from bcipydummies.core.events import EEGEvent, MentalCommandEvent, MentalCommand
 
 
-class MonitorPublisher(Publisher):
+class MousePublisher(Publisher):
     """
-    Publisher personalizado para mostrar información detallada
-    de los comandos recibidos del hardware Emotiv.
+    Publicador personalizado que mueve el mouse. 
     """
     
-    def __init__(self):
+    def __init__(self, pixels=50):
         self._is_ready = False
-        self.total_eventos = 0
-        self.comandos_por_tipo = {}
-        self.ultimo_comando = None
-        self. hora_inicio = None
+        self. pixels = pixels
+        self.comandos_ejecutados = 0
     
-    def start(self) -> None:
+    def start(self):
         self._is_ready = True
-        self.hora_inicio = datetime.now()
-        print("=" * 60)
-        print("🧠 MONITOR DE COMANDOS EMOTIV - INICIADO")
-        print("=" * 60)
-        print(f"⏰ Inicio: {self.hora_inicio. strftime('%H:%M:%S')}")
-        print("-" * 60)
+        print("🖱️  Control de mouse iniciado!")
     
-    def stop(self) -> None:
+    def stop(self):
         self._is_ready = False
-        duracion = datetime.now() - self.hora_inicio if self.hora_inicio else None
-        print("\n" + "=" * 60)
-        print("📊 RESUMEN DE SESIÓN")
-        print("=" * 60)
-        print(f"⏱️  Duración: {duracion}")
-        print(f"📈 Total eventos: {self.total_eventos}")
-        print("\n📋 Comandos por tipo:")
-        for cmd, count in sorted(self.comandos_por_tipo.items()):
-            porcentaje = (count / self. total_eventos * 100) if self.total_eventos > 0 else 0
-            print(f"   • {cmd}: {count} ({porcentaje:.1f}%)")
-        print("=" * 60)
+        print(f"🖱️  Control de mouse detenido.  Comandos ejecutados: {self.comandos_ejecutados}")
     
     @property
-    def is_ready(self) -> bool:
+    def is_ready(self):
         return self._is_ready
     
-    def publish(self, event: EEGEvent) -> None:
-        timestamp = datetime.now().strftime("%H:%M:%S. %f")[:-3]
+    def publish(self, event:  EEGEvent):
+        if not isinstance(event, MentalCommandEvent):
+            return
         
-        if isinstance(event, ConnectionEvent):
-            estado = "✅ CONECTADO" if event.connected else "❌ DESCONECTADO"
-            print(f"[{timestamp}] {estado}:  {event.message or ''}")
-            
-        elif isinstance(event, MentalCommandEvent):
-            self.total_eventos += 1
-            cmd_name = event.command.name
-            self.comandos_por_tipo[cmd_name] = self.comandos_por_tipo.get(cmd_name, 0) + 1
-            
-            # Barra de potencia visual
-            potencia_porcentaje = event.power * 100
-            barras = int(potencia_porcentaje / 5)  # 20 barras máximo
-            barra_visual = "█" * barras + "░" * (20 - barras)
-            
-            # Emoji según el comando
-            emojis = {
-                "NEUTRAL": "😐",
-                "PUSH": "👊",
-                "PULL": "🤚",
-                "LIFT": "⬆️",
-                "DROP": "⬇️",
-                "LEFT": "⬅️",
-                "RIGHT": "➡️",
-                "ROTATE_LEFT": "↪️",
-                "ROTATE_RIGHT": "↩️",
-                "DISAPPEAR": "👻"
-            }
-            emoji = emojis.get(cmd_name, "🧠")
-            
-            print(f"[{timestamp}] {emoji} {cmd_name: 12} [{barra_visual}] {potencia_porcentaje: 5.1f}%")
-            
-            # Guardar último comando no-neutral
-            if cmd_name != "NEUTRAL":
-                self.ultimo_comando = (cmd_name, event.power)
+        # Ignorar comandos neutrales
+        if event.command == MentalCommand.NEUTRAL: 
+            return
+        
+        # Obtener posición actual del mouse
+        class POINT(ctypes.Structure):
+            _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+        
+        pt = POINT()
+        ctypes.windll.user32.GetCursorPos(ctypes. byref(pt))
+        x, y = pt.x, pt. y
+        
+        # Calcular nueva posición según el comando
+        if event.command == MentalCommand.LEFT:
+            x -= self.pixels
+            print(f"⬅️  Moviendo izquierda (potencia: {event.power:. 0%})")
+        
+        elif event.command == MentalCommand.RIGHT:
+            x += self.pixels
+            print(f"➡️  Moviendo derecha (potencia: {event.power:.0%})")
+        
+        elif event.command == MentalCommand.PUSH:
+            y -= self.pixels
+            print(f"⬆️  Moviendo arriba (potencia: {event.power:.0%})")
+        
+        elif event.command == MentalCommand.LIFT:
+            # Hacer clic
+            ctypes.windll.user32.mouse_event(0x0002, 0, 0, 0, 0)  # Mouse down
+            ctypes.windll.user32.mouse_event(0x0004, 0, 0, 0, 0)  # Mouse up
+            print(f"🖱️  ¡Clic! (potencia: {event.power:.0%})")
+            self.comandos_ejecutados += 1
+            return
+        
+        # Mover el mouse a la nueva posición
+        ctypes.windll.user32.SetCursorPos(x, y)
+        self.comandos_ejecutados += 1
 
 
 def main():
-    """
-    Función principal para conectar con hardware Emotiv real.
-    """
-    print("\n🔧 Configurando conexión con Emotiv...")
+    print("=" * 50)
+    print("🖱️  CONTROL DE MOUSE CON LA MENTE")
+    print("=" * 50)
     
-    # Obtener credenciales de variables de entorno
-    client_id = os.environ.get("EMOTIV_CLIENT_ID")
-    client_secret = os.environ.get("EMOTIV_CLIENT_SECRET")
-    
-    if not client_id or not client_secret:
-        print("❌ ERROR: Configura las variables de entorno:")
-        print("   export EMOTIV_CLIENT_ID='tu_client_id'")
-        print("   export EMOTIV_CLIENT_SECRET='tu_client_secret'")
+    # Verificar credenciales
+    if client_id == "tu_client_id_aqui":
+        print("\n❌ ERROR: No has configurado tus credenciales!")
+        print("   Abre este archivo y edita las líneas:")
+        print('   client_id = "tu_client_id_aqui"')
+        print('   client_secret = "tu_client_secret_aqui"')
         return
     
     # Crear credenciales
@@ -472,35 +349,56 @@ def main():
         client_secret=client_secret
     )
     
-    # Crear fuente Emotiv
+    # Crear fuente
     source = EmotivSource(
         credentials=credentials,
-        streams=["com"]  # Solo comandos mentales
+        streams=["com"]
     )
     
-    # Crear publisher monitor
-    monitor = MonitorPublisher()
+    # Crear procesadores
+    processors = [
+        ThresholdProcessor(
+            thresholds={
+                "left": 0.5,
+                "right": 0.5,
+                "push":  0.5,
+                "lift": 0.6,  # Clic requiere más potencia para evitar accidentes
+            },
+            default_threshold=0.5
+        )
+    ]
+    
+    # Crear publicador de mouse
+    mouse = MousePublisher(pixels=pixeles_por_movimiento)
     
     # Crear pipeline
     pipeline = BCIPipeline(
         source=source,
-        publishers=[monitor]
+        processors=processors,
+        publishers=[mouse]
     )
     
-    print("🚀 Iniciando pipeline...")
-    print("💡 Tip:  Asegúrate de que tu headset está conectado en Emotiv Cortex")
-    print()
+    # Instrucciones
+    print("\n" + "=" * 50)
+    print("📝 INSTRUCCIONES:")
+    print("=" * 50)
+    print("   • Piensa 'LEFT'  → Mueve mouse a la izquierda")
+    print("   • Piensa 'RIGHT' → Mueve mouse a la derecha")
+    print("   • Piensa 'PUSH'  → Mueve mouse hacia arriba")
+    print("   • Piensa 'LIFT'  → Hace clic")
+    print(f"\n   Velocidad: {pixeles_por_movimiento} píxeles por movimiento")
+    print("\n   Presiona Ctrl+C para detener")
+    print("=" * 50)
     
     try:
         with pipeline:
-            print("Pipeline ejecutándose.  Presiona Ctrl+C para detener.\n")
+            print("\n🚀 ¡Control de mouse activo!")
             while True:
-                time.sleep(1)
+                time.sleep(0.1)
     except KeyboardInterrupt:
-        print("\n\n🛑 Deteniendo...")
-    except Exception as e:
+        print("\n\n🛑 Programa detenido.")
+    except Exception as e: 
         print(f"\n❌ Error: {e}")
-
 
 if __name__ == "__main__":
     main()
@@ -508,9 +406,472 @@ if __name__ == "__main__":
 
 ---
 
+## Ejemplo 3: Controlar YouTube (Play/Pausa/Siguiente)
+
+**¿Qué hace?** Controla la reproducción de videos en YouTube usando comandos mentales. 
+
+| Comando Mental | Acción |
+|----------------|--------|
+| `left` | Video anterior |
+| `right` | Video siguiente |
+| `push` | Subir volumen |
+| `lift` | Play / Pausa |
+
+### Pasos:
+
+1. Abre YouTube en tu navegador (Chrome, Firefox, Edge)
+2. Reproduce un video
+3. Copia el código en `controlar_youtube.py`
+4. Ejecuta: `python controlar_youtube.py`
+
+```python
+"""
+EJEMPLO 3: Controlar YouTube con la Mente
+=========================================
+Controla la reproducción de videos usando comandos mentales. 
+Funciona con YouTube en cualquier navegador.
+"""
+
+# ============================================
+# PASO 1: CONFIGURACIÓN - EDITA ESTA SECCIÓN
+# ============================================
+
+# Pon tus credenciales de Emotiv aquí
+client_id = "tu_client_id_aqui"
+client_secret = "tu_client_secret_aqui"
+
+# Nombre del navegador (debe estar abierto con YouTube)
+# Ejemplos comunes: 
+#   "YouTube - Google Chrome"
+#   "YouTube - Mozilla Firefox"  
+#   "YouTube - Microsoft Edge"
+# CONSEJO: Ejecuta el programa una vez para ver la lista de ventanas
+nombre_navegador = "YouTube - Google Chrome"
+
+# ============================================
+# PASO 2: CÓDIGO DEL PROGRAMA (NO MODIFICAR)
+# ============================================
+
+import time
+from bcipydummies import BCIPipeline
+from bcipydummies. sources.emotiv import EmotivSource
+from bcipydummies. sources.emotiv.cortex_client import CortexCredentials
+from bcipydummies.processors import ThresholdProcessor, DebounceProcessor
+from bcipydummies.publishers.keyboard.windows import WindowsKeyboardPublisher
+from bcipydummies. core.events import MentalCommand
+
+
+def main():
+    print("=" * 50)
+    print("🎬 CONTROL DE YOUTUBE CON LA MENTE")
+    print("=" * 50)
+    
+    # Verificar credenciales
+    if client_id == "tu_client_id_aqui":
+        print("\n❌ ERROR:  Configura tus credenciales primero!")
+        return
+    
+    # Mostrar ventanas
+    print("\n📋 Ventanas disponibles:")
+    print("-" * 40)
+    ventanas = WindowsKeyboardPublisher.list_windows()
+    youtube_ventanas = [v for v in ventanas if "youtube" in v.lower()]
+    
+    if youtube_ventanas:
+        print("🎬 Ventanas con YouTube detectadas:")
+        for v in youtube_ventanas:
+            print(f"   ✓ {v}")
+    else:
+        print("⚠️  No se detectó YouTube abierto.")
+        print("   Abre YouTube en tu navegador primero.")
+    
+    print("-" * 40)
+    
+    # Credenciales
+    credentials = CortexCredentials(
+        client_id=client_id,
+        client_secret=client_secret
+    )
+    
+    # Fuente
+    source = EmotivSource(credentials=credentials, streams=["com"])
+    
+    # Procesadores
+    processors = [
+        ThresholdProcessor(
+            thresholds={
+                "left": 0.6,
+                "right": 0.6,
+                "push":  0.5,
+                "lift": 0.5,
+            }
+        ),
+        # Evitar comandos repetidos muy rápido
+        DebounceProcessor(cooldown=1.0)  # 1 segundo entre comandos
+    ]
+    
+    # Mapeo de teclas para YouTube
+    # K = Play/Pausa
+    # J = Retroceder / Shift+P = Video anterior
+    # L = Adelantar / Shift+N = Video siguiente  
+    keyboard = WindowsKeyboardPublisher(
+        window_name=nombre_navegador,
+        command_mapping={
+            MentalCommand. LEFT: "J",      # Retroceder 10 segundos
+            MentalCommand.RIGHT: "L",     # Adelantar 10 segundos
+            MentalCommand.PUSH: "UP",     # Subir volumen (flecha arriba)
+            MentalCommand.LIFT: "K",      # Play/Pausa
+        }
+    )
+    
+    pipeline = BCIPipeline(
+        source=source,
+        processors=processors,
+        publishers=[keyboard]
+    )
+    
+    # Instrucciones
+    print("\n" + "=" * 50)
+    print("📝 CONTROLES:")
+    print("=" * 50)
+    print("   • LEFT  → Retroceder 10 segundos")
+    print("   • RIGHT → Adelantar 10 segundos")
+    print("   • PUSH  → Subir volumen")
+    print("   • LIFT  → Play / Pausa")
+    print("\n   Presiona Ctrl+C para detener")
+    print("=" * 50)
+    
+    try:
+        with pipeline:
+            print("\n🚀 ¡Control de YouTube activo!")
+            print("   Asegúrate de que la ventana del navegador esté visible.\n")
+            while True:
+                time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n🛑 Programa detenido.")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Ejemplo 4: Jugar un Juego de Carreras
+
+**¿Qué hace?** Controla un carro en juegos de carreras (funciona con muchos juegos que usen WASD o flechas).
+
+| Comando Mental | Acción |
+|----------------|--------|
+| `left` | Girar a la izquierda |
+| `right` | Girar a la derecha |
+| `push` | Acelerar |
+| `lift` | Frenar / Reversa |
+
+### Pasos: 
+
+1. Abre tu juego de carreras
+2. Asegúrate de que use controles WASD o flechas
+3. Copia el código en `juego_carreras.py`
+4. Ejecuta: `python juego_carreras.py`
+
+```python
+"""
+EJEMPLO 4: Jugar Juegos de Carreras con la Mente
+================================================
+Controla un carro en juegos usando comandos mentales.
+Compatible con juegos que usen WASD o flechas. 
+"""
+
+# ============================================
+# PASO 1: CONFIGURACIÓN - EDITA ESTA SECCIÓN
+# ============================================
+
+# Tus credenciales de Emotiv
+client_id = "tu_client_id_aqui"
+client_secret = "tu_client_secret_aqui"
+
+# Nombre EXACTO de la ventana del juego
+# Ejecuta el programa una vez para ver las ventanas disponibles
+nombre_juego = "Nombre de tu juego aquí"
+
+# Tipo de controles del juego
+# Opciones: "wasd" o "flechas"
+tipo_controles = "wasd"
+
+# ============================================
+# PASO 2: CÓDIGO DEL PROGRAMA (NO MODIFICAR)
+# ============================================
+
+import time
+from bcipydummies import BCIPipeline
+from bcipydummies.sources.emotiv import EmotivSource
+from bcipydummies.sources.emotiv.cortex_client import CortexCredentials
+from bcipydummies. processors import ThresholdProcessor, DebounceProcessor
+from bcipydummies.publishers.keyboard.windows import WindowsKeyboardPublisher
+from bcipydummies.core. events import MentalCommand
+
+
+def main():
+    print("=" * 50)
+    print("🏎️  CONTROL DE JUEGO DE CARRERAS")
+    print("=" * 50)
+    
+    if client_id == "tu_client_id_aqui":
+        print("\n❌ ERROR:  Configura tus credenciales primero!")
+        return
+    
+    # Mostrar ventanas disponibles
+    print("\n📋 Ventanas de juegos detectadas:")
+    print("-" * 40)
+    ventanas = WindowsKeyboardPublisher.list_windows()
+    for v in ventanas[: 20]: 
+        print(f"   • {v}")
+    print("-" * 40)
+    
+    # Definir mapeo según tipo de controles
+    if tipo_controles == "wasd": 
+        mapeo = {
+            MentalCommand.LEFT: "A",      # Izquierda
+            MentalCommand.RIGHT: "D",     # Derecha
+            MentalCommand.PUSH: "W",      # Acelerar
+            MentalCommand. LIFT: "S",      # Frenar
+        }
+        print("\n🎮 Usando controles WASD")
+    else: 
+        mapeo = {
+            MentalCommand.LEFT: "LEFT",   # Flecha izquierda
+            MentalCommand.RIGHT: "RIGHT", # Flecha derecha
+            MentalCommand.PUSH:  "UP",     # Flecha arriba
+            MentalCommand.LIFT: "DOWN",   # Flecha abajo
+        }
+        print("\n🎮 Usando controles de FLECHAS")
+    
+    credentials = CortexCredentials(
+        client_id=client_id,
+        client_secret=client_secret
+    )
+    
+    source = EmotivSource(credentials=credentials, streams=["com"])
+    
+    processors = [
+        ThresholdProcessor(
+            thresholds={
+                "left":  0.5,
+                "right": 0.5,
+                "push":  0.4,   # Acelerar más fácil
+                "lift": 0.5,
+            }
+        ),
+        DebounceProcessor(cooldown=0.2)  # Respuesta rápida para juegos
+    ]
+    
+    keyboard = WindowsKeyboardPublisher(
+        window_name=nombre_juego,
+        command_mapping=mapeo
+    )
+    
+    pipeline = BCIPipeline(
+        source=source,
+        processors=processors,
+        publishers=[keyboard]
+    )
+    
+    print("\n" + "=" * 50)
+    print("🎮 CONTROLES:")
+    print("=" * 50)
+    print("   • LEFT  → Girar izquierda")
+    print("   • RIGHT → Girar derecha")
+    print("   • PUSH  → Acelerar")
+    print("   • LIFT  → Frenar")
+    print("\n   Presiona Ctrl+C para detener")
+    print("=" * 50)
+    
+    try:
+        with pipeline:
+            print("\n🚀 ¡A correr!  Controles activos.")
+            while True:
+                time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("\n🛑 Juego pausado.")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Ejemplo 5: Control de Presentaciones PowerPoint
+
+**¿Qué hace?** Controla una presentación de PowerPoint sin usar las manos.
+
+| Comando Mental | Acción |
+|----------------|--------|
+| `left` | Diapositiva anterior |
+| `right` | Diapositiva siguiente |
+| `push` | Iniciar presentación |
+| `lift` | Terminar presentación |
+
+### Pasos:
+
+1. Abre PowerPoint con tu presentación
+2. Copia el código en `controlar_powerpoint.py`
+3. Ejecuta: `python controlar_powerpoint.py`
+
+```python
+"""
+EJEMPLO 5: Controlar PowerPoint con la Mente
+============================================
+Navega por tus presentaciones usando comandos mentales. 
+¡Perfecto para presentaciones manos libres!
+"""
+
+# ============================================
+# PASO 1: CONFIGURACIÓN - EDITA ESTA SECCIÓN
+# ============================================
+
+# Tus credenciales de Emotiv
+client_id = "tu_client_id_aqui"
+client_secret = "tu_client_secret_aqui"
+
+# Nombre de la ventana de PowerPoint
+# Generalmente es "Nombre del archivo - PowerPoint"
+# Ejemplo: "Mi Presentación. pptx - PowerPoint"
+nombre_powerpoint = "PowerPoint"
+
+# ============================================
+# PASO 2: CÓDIGO DEL PROGRAMA (NO MODIFICAR)
+# ============================================
+
+import time
+from bcipydummies import BCIPipeline
+from bcipydummies.sources.emotiv import EmotivSource
+from bcipydummies.sources.emotiv.cortex_client import CortexCredentials
+from bcipydummies. processors import ThresholdProcessor, DebounceProcessor
+from bcipydummies.publishers.keyboard.windows import WindowsKeyboardPublisher
+from bcipydummies.core. events import MentalCommand
+
+
+def main():
+    print("=" * 50)
+    print("📊 CONTROL DE POWERPOINT CON LA MENTE")
+    print("=" * 50)
+    
+    if client_id == "tu_client_id_aqui":
+        print("\n❌ ERROR: Configura tus credenciales primero!")
+        return
+    
+    # Buscar PowerPoint
+    print("\n📋 Buscando PowerPoint...")
+    ventanas = WindowsKeyboardPublisher. list_windows()
+    ppt_ventanas = [v for v in ventanas if "powerpoint" in v.lower() or "pptx" in v.lower()]
+    
+    if ppt_ventanas:
+        print("✅ PowerPoint detectado:")
+        for v in ppt_ventanas:
+            print(f"   • {v}")
+        # Usar la primera ventana de PowerPoint encontrada
+        nombre_powerpoint_final = ppt_ventanas[0]
+    else:
+        print("⚠️  No se detectó PowerPoint abierto.")
+        print("   Abre una presentación en PowerPoint primero.")
+        nombre_powerpoint_final = nombre_powerpoint
+    
+    credentials = CortexCredentials(
+        client_id=client_id,
+        client_secret=client_secret
+    )
+    
+    source = EmotivSource(credentials=credentials, streams=["com"])
+    
+    processors = [
+        ThresholdProcessor(
+            thresholds={
+                "left": 0.6,
+                "right": 0.6,
+                "push": 0.7,   # Mayor potencia para iniciar presentación
+                "lift": 0.7,   # Mayor potencia para terminar
+            }
+        ),
+        DebounceProcessor(cooldown=1.5)  # 1.5 segundos entre comandos (evita cambios accidentales)
+    ]
+    
+    # Atajos de teclado de PowerPoint
+    keyboard = WindowsKeyboardPublisher(
+        window_name=nombre_powerpoint_final,
+        command_mapping={
+            MentalCommand.LEFT: "LEFT",    # Diapositiva anterior
+            MentalCommand.RIGHT: "RIGHT",  # Diapositiva siguiente
+            MentalCommand.PUSH: "F5",      # Iniciar presentación
+            MentalCommand.LIFT:  "ESCAPE",  # Terminar presentación
+        }
+    )
+    
+    pipeline = BCIPipeline(
+        source=source,
+        processors=processors,
+        publishers=[keyboard]
+    )
+    
+    print("\n" + "=" * 50)
+    print("📝 CONTROLES:")
+    print("=" * 50)
+    print("   • LEFT  → Diapositiva anterior")
+    print("   • RIGHT → Diapositiva siguiente")
+    print("   • PUSH  → Iniciar presentación (F5)")
+    print("   • LIFT  → Terminar presentación (ESC)")
+    print("\n   ⏱️  Hay 1.5 segundos entre comandos para evitar")
+    print("       cambios accidentales.")
+    print("\n   Presiona Ctrl+C para detener")
+    print("=" * 50)
+    
+    try:
+        with pipeline:
+            print("\n🚀 ¡Control de PowerPoint activo!")
+            print("   Puedes empezar tu presentación.\n")
+            while True: 
+                time.sleep(1)
+    except KeyboardInterrupt: 
+        print("\n🛑 Control detenido.")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## 🆘 Solución de Problemas Comunes
+
+### "No se encontró la ventana"
+
+El nombre debe coincidir **EXACTAMENTE**.  Ejecuta cualquier ejemplo y mira la lista de ventanas disponibles.
+
+### "Error de credenciales"
+
+Asegúrate de: 
+1. Poner tus credenciales entre comillas:  `client_id = "abc123"`
+2. No dejar espacios extra
+3. Copiar el Client ID y Client Secret correctos desde emotiv.com/developer
+
+### "No se detectan comandos"
+
+1. Verifica que Emotiv Cortex esté ejecutándose
+2. Verifica que el headset esté conectado (luz verde)
+3. Asegúrate de haber entrenado los comandos en EmotivBCI
+
+### "Los comandos se disparan solos"
+
+Aumenta el umbral de potencia en `ThresholdProcessor`. Cambia de `0.5` a `0.7` o `0.8`.
+
+---
+
 ## Documentación Relacionada
 
-- **[Guía Deep Dive](deep-dive.md)** - Explicación completa de la arquitectura
-- **[Inicio Rápido](../getting-started/quickstart.md)** - Guía de configuración rápida
-- **[Referencia API](../api/emotiv-controller.md)** - Documentación de la API
-- **[Configuración Hardware](../hardware/emotiv-setup.md)** - Configuración de Emotiv
+- **[Deep Dive](../deep-dive/deep-dive.md)** - Arquitectura completa del sistema
+- **[Instalación](../getting-started/installation.md)** - Cómo instalar BCIpyDummies
+- **[Configuración Hardware](../hardware/emotiv-setup.md)** - Configurar tu headset Emotiv
