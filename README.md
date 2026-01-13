@@ -139,6 +139,18 @@ bcipydummies/
 - ✅ Arquitectura modular y extensible
 
 ---
+## 📚 Documentation / Documentación
+
+| English 🇬🇧 | Español 🇪🇸 |
+|-------------|-------------|
+| [Getting Started](docs/en/getting-started/index.md) | [Primeros Pasos](docs/es/getting-started/index.md) |
+| [Installation](docs/en/getting-started/installation.md) | [Instalación](docs/es/getting-started/installation.md) |
+| [Quickstart](docs/en/getting-started/quickstart.md) | [Inicio Rápido](docs/es/getting-started/quickstart. md) |
+| [Hardware Setup](docs/en/hardware/emotiv-setup.md) | [Configuración Hardware](docs/es/hardware/emotiv-setup. md) |
+| [API Reference](docs/en/api/emotiv-controller.md) | [Referencia API](docs/es/api/emotiv-controller. md) |
+| [System Design](docs/en/architecture/system-design.md) | [Diseño del Sistema](docs/es/architecture/system-design.md) |
+| [Deep Dive](docs/en/deep-dive/deep-dive.md) | [Deep Dive](docs/es/deep-dive/deep-dive.md) |
+| [Examples](docs/en/examples/examples.md) | [Ejemplos](docs/es/examples/examples. md) |  
 
 ## 👥 Colaboradores
 
