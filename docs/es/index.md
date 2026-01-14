@@ -58,10 +58,6 @@ BCIpyDummies está en desarrollo activo (v0.1.0). Enfoque actual:
 - Refactorización de arquitectura para extensibilidad
 - Planificación de soporte multiplataforma
 
-## Contribuir
-
-¡Damos la bienvenida a contribuciones!  Consulta nuestra [Guía de Contribución](contributing/index.md) para más detalles.
-
 ## Soporte
 
 - [GitHub Issues](https://github.com/itsvaalentine/BCIpyDummies/issues) - Reportes de bugs y solicitudes de funciones

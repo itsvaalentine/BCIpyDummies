@@ -234,4 +234,3 @@ publishers:
 
 - [Referencia API](../api/emotiv-controller.md)
 - [Protocolo Cortex](cortex-protocol.md)
-- [Guía de Contribución](../contributing/index.md)
