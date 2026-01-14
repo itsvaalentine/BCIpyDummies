@@ -125,7 +125,7 @@ The **Neutral state** is your brain's "baseline" or "do nothing" state. Without 
 ```
 1. Neutral (FIRST - ALWAYS)
 2. Right
-3. Left  
+3. Left
 4. Lift
 ```
 
@@ -162,27 +162,6 @@ controller.connect()
 ```
 
 ---
-
-## 📚 Documentation
-
-### 🇪🇸 Español
-
-| Document | Description |
-|----------|-------------|
-| 📖 **[ARQUITECTURA_COMPLETA.md](ARQUITECTURA_COMPLETA.md)** | Complete guide: structure, data flow, components and examples |
-
-### 🇬🇧 English
-
-| Section | Description |
-|---------|-------------|
-| 📥 [Installation](docs/en/getting-started/installation.md) | System requirements and setup |
-| ⚡ [Quickstart](docs/en/getting-started/quickstart.md) | Get running in 5 minutes |
-| 🎧 [Emotiv Setup](docs/en/hardware/emotiv-setup.md) | Hardware configuration guide |
-| 📖 [API Reference](docs/en/api/emotiv-controller.md) | Class and method documentation |
-| 🏛️ [System Design](docs/en/architecture/system-design.md) | Architecture overview |
-
----
-
 ## 📂 Project Structure
 
 ```
