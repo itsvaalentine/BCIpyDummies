@@ -1,155 +1,250 @@
-# BCIpyDummies
+```
+╔══════════════════════════════════════════════════════════════════════════╗
+║                                                                          ║
+║   ____   ____ ___            ____                            _           ║
+║  | __ ) / ___|_ _|_ __  _   |  _ \ _   _ _ __ ___  _ __ ___ (_) ___  ___ ║
+║  |  _ \| |    | || '_ \| | | | | | | | | '_ ` _ \| '_ ` _ \| |/ _ \/ __| ║
+║  | |_) | |___ | || |_) | |_| | |_| | |_| | | | | | | | | | | |  __/\__ \ ║
+║  |____/ \____|___| .__/ \__, |____/ \__,_|_| |_| |_|_| |_| |_|\___||___/ ║
+║                  |_|    |___/                                            ║
+║                                                                          ║
+║                       **For dummies 4 real**                             ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+```
 
-**Middleware library to bridge Emotiv EEG headsets with Windows applications through mental commands.**
-
-*For dummies 4 real*
-
-[![CI](https://github.com/itsvaalentine/BCIpyDummies/actions/workflows/tests.yml/badge.svg)](https://github.com/itsvaalentine/BCIpyDummies/actions/workflows/tests.yml)
+[![Python](https://img.shields.io/badge/Python-3.9+-blue. svg)](https://www.python.org/)
+[![Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](https://www.microsoft.com/windows)
 
 ---
 
-## Overview
+**Middleware to connect Emotiv EEG headsets with Windows applications through mental commands.**
 
-BCIpyDummies acts as a translator between Emotiv Cortex API (via WebSocket) and Windows applications via keyboard input simulation. Train mental commands in the Emotiv app, then use them to control any Windows application.
+BCIpyDummies acts as a translator between your brain and your computer. It captures mental commands from your Emotiv headset and converts them into keyboard inputs to control any Windows application.
 
-**Current capabilities:**
-- Connect to Emotiv headsets via Cortex API
-- Process mental commands (left, right, lift)
-- Simulate keyboard input to target Windows applications
-- List available windows on the system
+---
 
-## Requirements
+## 🎯 Use Cases
 
-- **OS:** Windows 10/11
-- **Python:** 3.9+
-- **Hardware:** Emotiv EEG headset (EPOC X, EPOC+, Insight, etc.)
-- **Software:** [Emotiv Cortex](https://www.emotiv.com/emotiv-cortex/) app installed and running
+- 🎮 Control video games with your mind
+- 🖥️ Hands-free application control
+- 🔬 BCI research and experimentation
+- ♿ Accessibility solutions
 
-## Installation
+---
 
-```bash
-# Clone the repository
-git clone https://github.com/itsvaalentine/BCIpyDummies.git
-cd BCIpyDummies
+## 🏗️ High-Level Architecture
 
-# Install in development mode
-pip install -e .
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          BCIPipeline (Orchestrator)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌────────────────┐    ┌──────────────────┐    ┌────────────────────────┐  │
+│  │    SOURCES     │───▶│   PROCESSORS     │───▶│     PUBLISHERS         │  │
+│  │    (Input)     │    │  (Processing)    │    │      (Output)          │  │
+│  └────────────────┘    └──────────────────┘    └────────────────────────┘  │
+│                                                                             │
+│  • EmotivSource        • ThresholdProcessor    • KeyboardPublisher         │
+│  • MockSource          • DebounceProcessor     • ConsolePublisher          │
+│                        • CommandMapper                                      │
+│                                                                             │
+└──────────���──────────────────────────────────────────────────────────────────┘
 ```
 
-## Configuration
+📖 **[View Full Architecture →](ARQUITECTURA_COMPLETA. md)**
 
-### Emotiv API Credentials
+---
 
-You need Emotiv developer credentials. Get them at [emotiv.com/developer](https://www.emotiv.com/developer/).
+## 📋 Requirements
 
-**Set credentials via environment variables (recommended):**
+| Requirement | Version |
+|-------------|---------|
+| Operating System | Windows 10/11 |
+| Python | 3.9+ |
+| Hardware | Emotiv EEG Headset (EPOC X, EPOC+, Insight, Flex) |
+| Software | [Emotiv Cortex](https://www.emotiv.com/emotiv-cortex/) |
 
-```bash
-export EMOTIV_CLIENT_ID="your_client_id"
-export EMOTIV_CLIENT_SECRET="your_client_secret"
+---
+
+## 🧠 Step 0: Subject Preparation & Mental Command Training (REQUIRED)
+
+> **⚠️ IMPORTANT:** Before using this library, you MUST prepare the subject and train their mental command profile in Emotiv BCI. This is essential to get the maximum potential from BCIpyDummies. 
+
+### Subject Preparation
+
+Before putting on the headset:
+
+1. **Clean hair** - No hair products (gel, hairspray, etc.)
+2. **Stay hydrated** - Drink water before the session
+3. **Rest well** - Be adequately rested to ensure optimal signal quality
+4. **Comfortable environment** - Minimize distractions and noise
+
+These precautions help minimize artifacts and optimize EEG signal quality.
+
+### Mental Command Training in Emotiv BCI
+
+Open the Emotiv BCI app and follow these steps:
+
+#### 1. 🔴 Train the NEUTRAL State First (MANDATORY)
+
+> **⚠️ DO NOT SKIP THIS STEP.** Many users assume Neutral is automatic — it is NOT. You must explicitly train it. 
+
+The **Neutral state** is your brain's "baseline" or "do nothing" state. Without it, the system cannot distinguish between intentional commands and random brain activity.
+
+**How to train Neutral:**
+1. Open Emotiv BCI → Mental Commands
+2. Select **Neutral** as the command to train
+3. During training: **relax, breathe normally, don't think about any movement**
+4. Keep your mind calm and unfocused (like daydreaming or zoning out)
+5. Complete **at least 8-10 training trials** of 8 seconds each
+
+**Why Neutral is critical:**
+- It serves as the reference point for ALL other commands
+- Without a good Neutral baseline, the system will constantly trigger false positives
+- A well-trained Neutral = fewer accidental commands during use
+
+#### 2. Train Your Mental Commands
+
+**Only after training Neutral**, proceed to train each command by **mentally visualizing** the intended action:
+
+| Command | Visualization | Tips |
+|---------|---------------|------|
+| **Right** | Imagine pushing something to the right | Visualize your hand pushing a box right |
+| **Left** | Imagine pushing something to the left | Visualize your hand pushing a box left |
+| **Lift** | Imagine lifting something up | Visualize lifting a heavy object or jumping |
+
+**Training Protocol:**
+- Perform **10 trials per command**, each lasting **8 seconds**
+- Take a **2-minute break** every 3 trials to avoid cognitive fatigue
+- Maintain concentration and focus during each trial
+- **Do NOT physically move** — only imagine the movement
+
+#### 3. Recommended Training Order
+
+```
+1. Neutral (FIRST - ALWAYS)
+2. Right
+3. Left
+4. Lift
 ```
 
-> **Security Note:** Never commit credentials to version control.
+> **Note:** Always start with Neutral. The order of Right/Left/Lift can vary, but Neutral must be trained first.
 
-## Usage
+#### 4. Verify Your Training
 
-### Basic Example
+Before using BCIpyDummies:
+- Check that each command achieves a reasonable potency score (>50%) in Emotiv BCI
+- Test the commands in Emotiv's built-in visualization
+- Practice switching between Neutral and active commands
+- If accuracy is low, retrain the problematic command
+
+**Pro tip:** Spend extra time on Neutral training. A strong Neutral baseline improves ALL other command recognition.
+
+---
+
+## 🚀 Quick Start
+
+```bash
+pip install bcipydummies
+```
 
 ```python
 from bcipydummies.emotiv_controller import EmotivController
 
 # List available windows
 windows = EmotivController.list_windows()
-for window in windows:
-    print(window)
+print(windows)
 
-# Connect to a specific window
-controller = EmotivController("Your Target Window Name")
-thread = controller.connect()
-
-# The controller will now:
-# - left command (80%+ power) -> 'A' key
-# - right command -> 'D' key
-# - lift command -> 'SPACE' key
-
-# When done
-controller.close()
+# Connect and control an application
+controller = EmotivController("Your Target Window")
+controller.connect()
 ```
 
-### Mental Command Mapping
-
-| Mental Command | Key | Power Threshold |
-|---------------|-----|-----------------|
-| `left` | A | 80% |
-| `right` | D | 0% |
-| `lift` | SPACE | 0% |
-
-## Project Structure
+---
+## 📂 Project Structure
 
 ```
 bcipydummies/
-├── __init__.py
-└── emotiv_controller.py    # Main controller module
-
-tests/
-└── test_emotiv_controller.py
+├── __init__.py              # Entry point
+├── __main__.py              # CLI: python -m bcipydummies
+├── emotiv_controller.py     # Legacy controller
+│
+├── core/                    # System core
+│   ├── config.py            # Configuration
+│   ├── engine.py            # BCIPipeline - Main orchestrator
+│   ├── events. py            # Event types
+│   ├── exceptions.py        # Custom exceptions
+│   └── factory.py           # Factory functions
+│
+├── sources/                 # EEG data sources
+├── processors/              # Signal processors
+└── publishers/              # Output publishers
 ```
-
-### Key Components
-
-**EmotivController** (`emotiv_controller.py`):
-- `__init__(window_name)` - Initialize and find target window
-- `connect()` - Start WebSocket connection to Cortex API
-- `close()` - Close the connection
-- `list_windows()` - Static method to enumerate visible windows
-
-## Development
-
-### Running Tests
-
-```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest tests/ -v
-```
-
-### Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `websocket-client` | Cortex API communication |
-| `pywin32` | Windows API (window management, keyboard simulation) |
-| `pytest` | Testing framework |
-
-## Known Limitations
-
-- **Windows only** - Uses `win32gui` for window/keyboard control
-- **Emotiv headsets only** - Currently no support for other EEG devices
-- **Hardcoded key mappings** - Customization requires code changes
-
-## Roadmap
-
-- [ ] Configuration file support
-- [ ] Cross-platform keyboard simulation
-- [ ] CLI interface
-- [ ] Additional EEG source adapters
-- [ ] Configurable command mappings and thresholds
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for new functionality
-4. Submit a pull request
-
-## License
-
-See [LICENSE](LICENSE) for details.
 
 ---
 
-**Note:** This project requires trained mental commands in the Emotiv app. For best results, spend time training neutral state and individual commands before using BCIpyDummies.
+## ✨ Features
+
+- ✅ WebSocket connection to Emotiv Cortex API
+- ✅ Mental command processing (left, right, lift)
+- ✅ Keyboard simulation for Windows applications
+- ✅ Window enumeration utility
+- ✅ Mock source for testing without hardware
+- ✅ Modular and extensible architecture
+
+---
+
+## 📚 Documentation / Documentación
+
+| English 🇬🇧 | Español 🇪🇸 |
+|-------------|-------------|
+| [Getting Started](docs/en/index.md) | [Primeros Pasos](docs/es/index.md) |
+| [Installation](docs/en/getting-started/installation.md) | [Instalación](docs/es/getting-started/installation.md) |
+| [Quickstart](docs/en/getting-started/quickstart.md) | [Inicio Rápido](docs/es/getting-started/quickstart.md) |
+| [Hardware Setup](docs/en/hardware/emotiv-setup.md) | [Configuración Hardware](docs/es/hardware/emotiv-setup..md) |
+| [API Reference](docs/en/api/emotiv-controller.md) | [Referencia API](docs/es/api/emotiv-controller.md) |
+| [System Design](docs/en/architecture/system-design.md) | [Diseño del Sistema](docs/es/architecture/system-design.md) |
+| [Deep Dive](docs/en/deep-dive/deep-dive.md) | [Vision General ](docs/es/vision-general.md) |
+| [Examples](docs/en/examples/examples.md) | [Ejemplos](docs/es/ejemplos/ejemplos.md) |
+
+## 👥 Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/itsvaalentine">
+        <img src="https://avatars.githubusercontent.com/u/96605134? v=4" width="100px;" alt="itsvaalentine"/>
+        <br />
+        <sub><b>@itsvaalentine</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Gaelite">
+        <img src="https://avatars.githubusercontent.com/u/129134162? v=4" width="100px;" alt="Gaelite"/>
+        <br />
+        <sub><b>@Gaelite</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/BernardoAguayoOrtega">
+        <img src="https://avatars.githubusercontent.com/u/63122476?v=4" width="100px;" alt="BernardoAguayoOrtega"/>
+        <br />
+        <sub><b>@BernardoAguayoOrtega</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 📬 Support
+
+- 🐛 [GitHub Issues](https://github.com/itsvaalentine/BCIpyDummies/issues) - Report bugs
+- 💬 [GitHub Discussions](https://github.com/itsvaalentine/BCIpyDummies/discussions) - Questions
+
+---
+
+```
+                    Made with 🧠 by @itsvaalentine
+```
