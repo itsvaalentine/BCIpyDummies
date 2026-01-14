@@ -13,137 +13,137 @@
 ╚══════════════════════════════════════════════════════════════════════════╝
 ```
 
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.9+-blue. svg)](https://www.python.org/)
 [![Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](https://www.microsoft.com/windows)
 
 ---
 
-**Middleware para conectar headsets EEG Emotiv con aplicaciones de Windows mediante comandos mentales.**
+**Middleware to connect Emotiv EEG headsets with Windows applications through mental commands.**
 
-BCIpyDummies actúa como traductor entre tu cerebro y tu computadora.  Captura comandos mentales desde tu headset Emotiv y los convierte en pulsaciones de teclado para controlar cualquier aplicación de Windows.
-
----
-
-## 🎯 Casos de Uso
-
-- 🎮 Controla videojuegos con tu mente
-- 🖥️ Control de aplicaciones manos libres
-- 🔬 Investigación y experimentación BCI
-- ♿ Soluciones de accesibilidad
+BCIpyDummies acts as a translator between your brain and your computer. It captures mental commands from your Emotiv headset and converts them into keyboard inputs to control any Windows application.
 
 ---
 
-## 🏗️ Arquitectura de Alto Nivel
+## 🎯 Use Cases
+
+- 🎮 Control video games with your mind
+- 🖥️ Hands-free application control
+- 🔬 BCI research and experimentation
+- ♿ Accessibility solutions
+
+---
+
+## 🏗️ High-Level Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          BCIPipeline (Orquestador)                          │
+│                          BCIPipeline (Orchestrator)                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌────────────────┐    ┌──────────────────┐    ┌────────────────────────┐  │
 │  │    SOURCES     │───▶│   PROCESSORS     │───▶│     PUBLISHERS         │  │
-│  │   (Entrada)    │    │ (Procesamiento)  │    │      (Salida)          │  │
+│  │    (Input)     │    │  (Processing)    │    │      (Output)          │  │
 │  └────────────────┘    └──────────────────┘    └────────────────────────┘  │
 │                                                                             │
 │  • EmotivSource        • ThresholdProcessor    • KeyboardPublisher         │
 │  • MockSource          • DebounceProcessor     • ConsolePublisher          │
 │                        • CommandMapper                                      │
 │                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+└──────────���──────────────────────────────────────────────────────────────────┘
 ```
 
-📖 **[Ver Arquitectura Completa →](ARQUITECTURA_COMPLETA. md)**
+📖 **[View Full Architecture →](ARQUITECTURA_COMPLETA. md)**
 
 ---
 
-## 📋 Requisitos
+## 📋 Requirements
 
-| Requisito | Versión |
-|-----------|---------|
-| Sistema Operativo | Windows 10/11 |
+| Requirement | Version |
+|-------------|---------|
+| Operating System | Windows 10/11 |
 | Python | 3.9+ |
-| Hardware | Headset Emotiv EEG (EPOC X, EPOC+, Insight, Flex) |
+| Hardware | Emotiv EEG Headset (EPOC X, EPOC+, Insight, Flex) |
 | Software | [Emotiv Cortex](https://www.emotiv.com/emotiv-cortex/) |
 
 ---
 
-## 🧠 Paso 0: Preparación del Sujeto y Entrenamiento de Comandos Mentales (OBLIGATORIO)
+## 🧠 Step 0: Subject Preparation & Mental Command Training (REQUIRED)
 
-> **⚠️ IMPORTANTE:** Antes de usar esta librería, DEBES preparar al sujeto y entrenar su perfil de comandos mentales en Emotiv BCI.  Esto es esencial para obtener el máximo potencial de BCIpyDummies.
+> **⚠️ IMPORTANT:** Before using this library, you MUST prepare the subject and train their mental command profile in Emotiv BCI. This is essential to get the maximum potential from BCIpyDummies. 
 
-### Preparación del Sujeto
+### Subject Preparation
 
-Antes de colocar el headset: 
+Before putting on the headset:
 
-1. **Cabello limpio** - Sin productos (gel, spray, etc.)
-2. **Buena hidratación** - Beber agua antes de la sesión
-3. **Descanso adecuado** - Estar bien descansado para óptima calidad de señal
-4. **Ambiente cómodo** - Minimizar distracciones y ruido
+1. **Clean hair** - No hair products (gel, hairspray, etc.)
+2. **Stay hydrated** - Drink water before the session
+3. **Rest well** - Be adequately rested to ensure optimal signal quality
+4. **Comfortable environment** - Minimize distractions and noise
 
-Estas precauciones ayudan a minimizar artefactos y optimizar la calidad de la señal EEG.
+These precautions help minimize artifacts and optimize EEG signal quality.
 
-### Entrenamiento de Comandos Mentales en Emotiv BCI
+### Mental Command Training in Emotiv BCI
 
-Abre la aplicación Emotiv BCI y sigue estos pasos:
+Open the Emotiv BCI app and follow these steps:
 
-#### 1. 🔴 Entrena el Estado NEUTRAL Primero (OBLIGATORIO)
+#### 1. 🔴 Train the NEUTRAL State First (MANDATORY)
 
-> **⚠️ NO SALTES ESTE PASO. ** Muchos usuarios asumen que Neutral es automático — NO lo es.  Debes entrenarlo explícitamente.
+> **⚠️ DO NOT SKIP THIS STEP.** Many users assume Neutral is automatic — it is NOT. You must explicitly train it. 
 
-El **estado Neutral** es la "línea base" o estado de "no hacer nada" de tu cerebro. Sin él, el sistema no puede distinguir entre comandos intencionales y actividad cerebral aleatoria.
+The **Neutral state** is your brain's "baseline" or "do nothing" state. Without it, the system cannot distinguish between intentional commands and random brain activity.
 
-**Cómo entrenar Neutral:**
-1. Abre Emotiv BCI → Mental Commands
-2. Selecciona **Neutral** como el comando a entrenar
-3. Durante el entrenamiento:  **relájate, respira normalmente, no pienses en ningún movimiento**
-4. Mantén tu mente calmada y desenfocada (como soñar despierto)
-5. Completa **al menos 8-10 sesiones de entrenamiento** de 8 segundos cada una
+**How to train Neutral:**
+1. Open Emotiv BCI → Mental Commands
+2. Select **Neutral** as the command to train
+3. During training: **relax, breathe normally, don't think about any movement**
+4. Keep your mind calm and unfocused (like daydreaming or zoning out)
+5. Complete **at least 8-10 training trials** of 8 seconds each
 
-**Por qué Neutral es crítico:**
-- Sirve como punto de referencia para TODOS los demás comandos
-- Sin una buena línea base Neutral, el sistema constantemente disparará falsos positivos
-- Un Neutral bien entrenado = menos comandos accidentales durante el uso
+**Why Neutral is critical:**
+- It serves as the reference point for ALL other commands
+- Without a good Neutral baseline, the system will constantly trigger false positives
+- A well-trained Neutral = fewer accidental commands during use
 
-#### 2. Entrena tus Comandos Mentales
+#### 2. Train Your Mental Commands
 
-**Solo después de entrenar Neutral**, procede a entrenar cada comando **visualizando mentalmente** la acción deseada:
+**Only after training Neutral**, proceed to train each command by **mentally visualizing** the intended action:
 
-| Comando | Visualización | Tips |
+| Command | Visualization | Tips |
 |---------|---------------|------|
-| **Right** | Imagina empujar algo hacia la derecha | Visualiza tu mano empujando una caja a la derecha |
-| **Left** | Imagina empujar algo hacia la izquierda | Visualiza tu mano empujando una caja a la izquierda |
-| **Lift** | Imagina levantar algo | Visualiza levantar un objeto pesado o saltar |
+| **Right** | Imagine pushing something to the right | Visualize your hand pushing a box right |
+| **Left** | Imagine pushing something to the left | Visualize your hand pushing a box left |
+| **Lift** | Imagine lifting something up | Visualize lifting a heavy object or jumping |
 
-**Protocolo de Entrenamiento:**
-- Realiza **10 sesiones por comando**, cada una de **8 segundos**
-- Toma un **descanso de 2 minutos** cada 3 sesiones para evitar fatiga cognitiva
-- Mantén concentración y enfoque durante cada sesión
-- **NO te muevas físicamente** — solo imagina el movimiento
+**Training Protocol:**
+- Perform **10 trials per command**, each lasting **8 seconds**
+- Take a **2-minute break** every 3 trials to avoid cognitive fatigue
+- Maintain concentration and focus during each trial
+- **Do NOT physically move** — only imagine the movement
 
-#### 3. Orden de Entrenamiento Recomendado
+#### 3. Recommended Training Order
 
 ```
-1. Neutral (PRIMERO - SIEMPRE)
+1. Neutral (FIRST - ALWAYS)
 2. Right
-3. Left
+3. Left  
 4. Lift
 ```
 
-> **Nota:** Siempre comienza con Neutral.  El orden de Right/Left/Lift puede variar, pero Neutral debe entrenarse primero.
+> **Note:** Always start with Neutral. The order of Right/Left/Lift can vary, but Neutral must be trained first.
 
-#### 4. Verifica tu Entrenamiento
+#### 4. Verify Your Training
 
-Antes de usar BCIpyDummies:
-- Verifica que cada comando alcance una puntuación de potencia razonable (>50%) en Emotiv BCI
-- Prueba los comandos en la visualización integrada de Emotiv
-- Practica alternar entre Neutral y comandos activos
-- Si la precisión es baja, re-entrena el comando problemático
+Before using BCIpyDummies:
+- Check that each command achieves a reasonable potency score (>50%) in Emotiv BCI
+- Test the commands in Emotiv's built-in visualization
+- Practice switching between Neutral and active commands
+- If accuracy is low, retrain the problematic command
 
-**Pro tip:** Dedica tiempo extra al entrenamiento de Neutral.  Una línea base Neutral fuerte mejora el reconocimiento de TODOS los demás comandos.
+**Pro tip:** Spend extra time on Neutral training. A strong Neutral baseline improves ALL other command recognition.
 
 ---
 
-## 🚀 Inicio Rápido
+## 🚀 Quick Start
 
 ```bash
 pip install bcipydummies
@@ -152,67 +152,67 @@ pip install bcipydummies
 ```python
 from bcipydummies.emotiv_controller import EmotivController
 
-# Listar ventanas disponibles
+# List available windows
 windows = EmotivController.list_windows()
 print(windows)
 
-# Conectar y controlar una aplicación
-controller = EmotivController("Tu Ventana Objetivo")
+# Connect and control an application
+controller = EmotivController("Your Target Window")
 controller.connect()
 ```
 
 ---
 
-## 📚 Documentación
+## 📚 Documentation
 
 ### 🇪🇸 Español
 
-| Documento | Descripción |
-|-----------|-------------|
-| 📖 **[ARQUITECTURA_COMPLETA.md](ARQUITECTURA_COMPLETA. md)** | Guía completa:  estructura, flujo de datos, componentes y ejemplos |
+| Document | Description |
+|----------|-------------|
+| 📖 **[ARQUITECTURA_COMPLETA.md](ARQUITECTURA_COMPLETA.md)** | Complete guide: structure, data flow, components and examples |
 
 ### 🇬🇧 English
 
 | Section | Description |
 |---------|-------------|
-| 📥 [Installation](docs/getting-started/installation.md) | System requirements and setup |
+| 📥 [Installation](docs/getting-started/installation. md) | System requirements and setup |
 | ⚡ [Quickstart](docs/getting-started/quickstart.md) | Get running in 5 minutes |
 | 🎧 [Emotiv Setup](docs/hardware/emotiv-setup.md) | Hardware configuration guide |
-| 📖 [API Reference](docs/api/emotiv-controller.md) | Class and method documentation |
+| 📖 [API Reference](docs/api/emotiv-controller. md) | Class and method documentation |
 | 🏛️ [System Design](docs/architecture/system-design.md) | Architecture overview |
 
 ---
 
-## 📂 Estructura del Proyecto
+## 📂 Project Structure
 
 ```
 bcipydummies/
-├── __init__.py              # Punto de entrada
-├── __main__.py              # CLI:  python -m bcipydummies
-├── emotiv_controller.py     # Controlador legacy
+├��─ __init__.py              # Entry point
+├── __main__.py              # CLI: python -m bcipydummies
+├── emotiv_controller.py     # Legacy controller
 │
-├── core/                    # Núcleo del sistema
-│   ├── config.py            # Configuración
-│   ├── engine.py            # BCIPipeline - Orquestador principal
-│   ├── events.py            # Tipos de eventos
-│   ├── exceptions.py        # Excepciones personalizadas
-│   └── factory.py           # Funciones factory
+├── core/                    # System core
+│   ├── config.py            # Configuration
+│   ├── engine.py            # BCIPipeline - Main orchestrator
+│   ├── events. py            # Event types
+│   ├── exceptions.py        # Custom exceptions
+│   └── factory.py           # Factory functions
 │
-├── sources/                 # Fuentes de datos EEG
-├── processors/              # Procesadores de señal
-└── publishers/              # Publicadores de salida
+├── sources/                 # EEG data sources
+├── processors/              # Signal processors
+└── publishers/              # Output publishers
 ```
 
 ---
 
-## ✨ Características
+## ✨ Features
 
-- ✅ Conexión WebSocket a Emotiv Cortex API
-- ✅ Procesamiento de comandos mentales (left, right, lift)
-- ✅ Simulación de teclado para aplicaciones Windows
-- ✅ Utilidad de enumeración de ventanas
-- ✅ Fuente mock para pruebas sin hardware
-- ✅ Arquitectura modular y extensible
+- ✅ WebSocket connection to Emotiv Cortex API
+- ✅ Mental command processing (left, right, lift)
+- ✅ Keyboard simulation for Windows applications
+- ✅ Window enumeration utility
+- ✅ Mock source for testing without hardware
+- ✅ Modular and extensible architecture
 
 ---
 
@@ -229,7 +229,7 @@ bcipydummies/
 | [Deep Dive](docs/en/deep-dive/deep-dive.md) | [Deep Dive](docs/es/deep-dive/deep-dive.md) |
 | [Examples](docs/en/examples/examples.md) | [Ejemplos](docs/es/examples/examples.md) |
 
-## 👥 Colaboradores
+## 👥 Contributors
 
 <table>
   <tr>
@@ -259,13 +259,13 @@ bcipydummies/
 
 ---
 
-## 📬 Soporte
+## 📬 Support
 
-- 🐛 [GitHub Issues](https://github.com/itsvaalentine/BCIpyDummies/issues) - Reportar bugs
-- 💬 [GitHub Discussions](https://github.com/itsvaalentine/BCIpyDummies/discussions) - Preguntas
+- 🐛 [GitHub Issues](https://github.com/itsvaalentine/BCIpyDummies/issues) - Report bugs
+- 💬 [GitHub Discussions](https://github.com/itsvaalentine/BCIpyDummies/discussions) - Questions
 
 ---
 
 ```
-                    Hecho con 🧠 por @itsvaalentine
+                    Made with 🧠 by @itsvaalentine
 ```
