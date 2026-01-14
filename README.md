@@ -175,11 +175,11 @@ controller.connect()
 
 | Section | Description |
 |---------|-------------|
-| 📥 [Installation](docs/getting-started/installation. md) | System requirements and setup |
-| ⚡ [Quickstart](docs/getting-started/quickstart.md) | Get running in 5 minutes |
-| 🎧 [Emotiv Setup](docs/hardware/emotiv-setup.md) | Hardware configuration guide |
-| 📖 [API Reference](docs/api/emotiv-controller. md) | Class and method documentation |
-| 🏛️ [System Design](docs/architecture/system-design.md) | Architecture overview |
+| 📥 [Installation](docs/en/getting-started/installation.md) | System requirements and setup |
+| ⚡ [Quickstart](docs/en/getting-started/quickstart.md) | Get running in 5 minutes |
+| 🎧 [Emotiv Setup](docs/en/hardware/emotiv-setup.md) | Hardware configuration guide |
+| 📖 [API Reference](docs/en/api/emotiv-controller.md) | Class and method documentation |
+| 🏛️ [System Design](docs/en/architecture/system-design.md) | Architecture overview |
 
 ---
 
@@ -220,14 +220,14 @@ bcipydummies/
 
 | English 🇬🇧 | Español 🇪🇸 |
 |-------------|-------------|
-| [Getting Started](docs/en/getting-started/index.md) | [Primeros Pasos](docs/es/getting-started/index.md) |
+| [Getting Started](docs/en/index.md) | [Primeros Pasos](docs/es/index.md) |
 | [Installation](docs/en/getting-started/installation.md) | [Instalación](docs/es/getting-started/installation.md) |
 | [Quickstart](docs/en/getting-started/quickstart.md) | [Inicio Rápido](docs/es/getting-started/quickstart.md) |
 | [Hardware Setup](docs/en/hardware/emotiv-setup.md) | [Configuración Hardware](docs/es/hardware/emotiv-setup..md) |
 | [API Reference](docs/en/api/emotiv-controller.md) | [Referencia API](docs/es/api/emotiv-controller.md) |
 | [System Design](docs/en/architecture/system-design.md) | [Diseño del Sistema](docs/es/architecture/system-design.md) |
-| [Deep Dive](docs/en/deep-dive/deep-dive.md) | [Deep Dive](docs/es/deep-dive/deep-dive.md) |
-| [Examples](docs/en/examples/examples.md) | [Ejemplos](docs/es/examples/examples.md) |
+| [Deep Dive](docs/en/deep-dive/deep-dive.md) | [Vision General ](docs/es/vision-general.md) |
+| [Examples](docs/en/examples/examples.md) | [Ejemplos](docs/es/ejemplos/ejemplos.md) |
 
 ## 👥 Contributors
 
